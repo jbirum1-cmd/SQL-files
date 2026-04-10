@@ -18,8 +18,6 @@ join titan.live.dbo.sku s
 on k.component_sku = s.sku
 order by k.sku
 
---select * from #kits1 where sku = '1782173K1'
-
 drop table if exists #kits2
 select
 k.sku,
@@ -44,8 +42,6 @@ and not exists (
 	from #kits2 k
 	where k.sku = trim(d.dwin_item_number))
 group by trim(dwin_item_number)
-
---select * from sqleagle.hh.dw_item where trim(dwin_item_number) = '1782173K1'
 
 
 --unions all skus together
@@ -76,6 +72,7 @@ select
 p.identifier,
 cast(p.erp_sku_create_date as date) as feed_date,
 u.erp_create_date as calculated_date,
+p.core_product_data_source,
 case when
 	(p.erp_sku_create_date = u.erp_create_date) or (p.erp_sku_create_date is null and u.erp_create_date is null)
 	then 'true'
@@ -83,13 +80,18 @@ case when
 	end as date_compare
 from pim.Product_Feed_Full p
 left join #union u
-on p.identifier = u.sku
+on p.identifier = u.sku 
  where case when
 	p.erp_sku_create_date = u.erp_create_date or (p.erp_sku_create_date is null and u.erp_create_date is null)
 	then 'true'
 	else 'false'
 	end = 'false'
 	and p.product_trace <> 'akeneo only'
+and not exists (
+	select 1
+	from #homesource h
+	where h.sku = p.identifier)
+
 
 --compares calculated date to akeneo (checks that program is updating end system)
 select
