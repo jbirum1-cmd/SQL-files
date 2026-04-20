@@ -63,11 +63,11 @@ into #NOHH
 from #union u
 join titan.testing.dbo.product_location pl
 on trim(u.sku) = trim(pl.sku) and u.eagle_location = pl.location_type and u.warehouse_mapped = pl.warehouse_code
- JOIN Titan.LIVE.dbo.sku s 
+ JOIN Titan.testing.dbo.sku s 
     ON TRIM(s.sku) = TRIM(pl.sku)
-    JOIN Titan.LIVE.dbo.products p 
+    JOIN Titan.testing.dbo.products p 
         ON p.product_number = s.product_number
-    JOIN Titan.LIVE.dbo.product_types pt 
+    JOIN Titan.testing.dbo.product_types pt 
         ON pt.product_type_code = p.product_type_code
 where u.warehouse_mapped in ('hhh','htool') and pt.inventory_flag = 'y' and s.kit_code NOT IN ('K', 'S')
 
@@ -90,11 +90,11 @@ into #NOLEH
 from #union u
 join titan.testing.dbo.product_location pl
 on trim(u.sku) = trim(pl.sku) and pl.warehouse_code = u.warehouse_mapped
- JOIN Titan.LIVE.dbo.sku s 
+ JOIN Titan.testing.dbo.sku s 
     ON TRIM(s.sku) = TRIM(pl.sku)
-    JOIN Titan.LIVE.dbo.products p 
+    JOIN Titan.testing.dbo.products p 
         ON p.product_number = s.product_number
-    JOIN Titan.LIVE.dbo.product_types pt 
+    JOIN Titan.testing.dbo.product_types pt 
         ON pt.product_type_code = p.product_type_code
 where u.warehouse_mapped in ('lhak','lhad') and pt.inventory_flag = 'y' and s.kit_code NOT IN ('K', 'S')
 
