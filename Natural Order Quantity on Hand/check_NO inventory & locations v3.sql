@@ -83,11 +83,11 @@ into #NO
 from #union u
 join titan.testing.dbo.product_location pl
 on trim(u.sku) = trim(pl.sku) and u.warehouse_mapped = pl.warehouse_code
- JOIN Titan.LIVE.dbo.sku s 
+ JOIN Titan.testing.dbo.sku s 
     ON TRIM(s.sku) = TRIM(pl.sku)
-    JOIN Titan.LIVE.dbo.products p 
+    JOIN Titan.testing.dbo.products p 
         ON p.product_number = s.product_number
-    JOIN Titan.LIVE.dbo.product_types pt 
+    JOIN Titan.testing.dbo.product_types pt 
         ON pt.product_type_code = p.product_type_code
 where pt.inventory_flag = 'y' and s.kit_code NOT IN ('K', 'S')
 
