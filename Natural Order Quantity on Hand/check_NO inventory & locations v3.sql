@@ -1,4 +1,4 @@
---gets QOH & location code from eagle for stores 1,2,7,8
+--gets QOH & location code from eagle for stores 1,2,4,7,8
 drop table if exists #fbm
 select
 trim(in_item_number) as sku,
@@ -30,6 +30,7 @@ into #fbm
 from sqleagle.hh.view_in_clone
 where in_store in ('1','2','4','7','8') and trim(in_item_number) not like 'zz%' and trim(in_item_number) not like '$due'
 order by trim(in_item_number) 
+
 
 ----sql check for only one unique record per sku/in_store combination
 --SELECT 
@@ -91,6 +92,17 @@ on trim(u.sku) = trim(pl.sku) and u.warehouse_mapped = pl.warehouse_code
         ON pt.product_type_code = p.product_type_code
 where pt.inventory_flag = 'y' and s.kit_code NOT IN ('K', 'S')
 
+--create table of skus with multiple NO locations for the same in_store value and check against program 
+drop table if exists #multiples
+SELECT 
+    sku,
+    in_store
+into #multiples
+FROM #NO
+GROUP BY 
+    sku,
+    in_store
+HAVING COUNT(DISTINCT NO_location) > 1;
 
 --compares Eagle QOH & location to NO total product quantity & location. Run before program updates.
 drop table if exists #before
@@ -112,8 +124,8 @@ case when floor(QOH) = product_quantity
 	else 'false'
 	end as quantity_compare
 into #before
-from #NO 
-where (
+from #NO n
+where ((
 	case when floor(QOH) = product_quantity
 	then 'true'
 	else 'false'
@@ -123,8 +135,13 @@ where (
 	then 'true'
 	else 'false'
 	end = 'false'
-	)
+	)) 
+	and not exists (
+	select 1
+	from #multiples m
+	where m.sku = n.sku)
 order by sku
+
 
 --compares Eagle QOH & location to NO total product quantity & location. Run after program updates.
 drop table if exists #after
@@ -146,8 +163,8 @@ case when floor(QOH) = product_quantity
 	else 'false'
 	end as quantity_compare
 into #after
-from #NO 
-where (
+from #NO n
+where ((
 	case when floor(QOH) = product_quantity
 	then 'true'
 	else 'false'
@@ -157,20 +174,26 @@ where (
 	then 'true'
 	else 'false'
 	end = 'false'
-	)
+	))
+	and not exists (
+	select 1
+	from #multiples m
+	where m.sku = n.sku)
 order by sku
 
+
 select * from #before
-select * from #after
+select * from #after --where sku = '100063524' 
+select * from #multiples
 
 --compares location changes to log. Run after program updates.
 select
 b.sku,
 b.eagle_location,
-b.NO_location
+b.NO_location,
 l.warehouse,
-l.previous_location,
-l.new_location,
+l.previouslocation,
+l.newlocation,
 l.changedat
 FROM #before b
 LEFT JOIN INV.LocationChangeLog l
