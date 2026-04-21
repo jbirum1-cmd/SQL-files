@@ -90,7 +90,8 @@ on trim(u.sku) = trim(pl.sku) and u.warehouse_mapped = pl.warehouse_code
         ON p.product_number = s.product_number
     JOIN Titan.testing.dbo.product_types pt 
         ON pt.product_type_code = p.product_type_code
-where pt.inventory_flag = 'y' and s.kit_code NOT IN ('K', 'S')
+where pt.inventory_flag = 'y' and (s.kit_code NOT IN ('K', 'S') OR s.kit_code IS NULL)
+
 
 --create table of skus with multiple NO locations for the same in_store value and check against program 
 drop table if exists #multiples
@@ -115,7 +116,7 @@ product_quantity,
 in_store as Eagle_in_store,
 warehouse_mapped,
 warehouse_code as NO_warehouse_code,
-case when eagle_location = NO_location
+case when eagle_location = NO_location or eagle_location = ' '
 	then 'true'
 	else 'false'
 	end as location_compare,
@@ -131,7 +132,7 @@ where ((
 	else 'false'
 	end = 'false'
 	) or (
-	case when eagle_location = NO_location
+	case when eagle_location = NO_location or eagle_location = ' '
 	then 'true'
 	else 'false'
 	end = 'false'
@@ -154,7 +155,7 @@ product_quantity,
 in_store as Eagle_in_store,
 warehouse_mapped,
 warehouse_code as NO_warehouse_code,
-case when eagle_location = NO_location
+case when eagle_location = NO_location or eagle_location = ' '
 	then 'true'
 	else 'false'
 	end as location_compare,
@@ -170,7 +171,7 @@ where ((
 	else 'false'
 	end = 'false'
 	) or (
-	case when eagle_location = NO_location
+	case when eagle_location = NO_location or eagle_location = ' '
 	then 'true'
 	else 'false'
 	end = 'false'
