@@ -543,7 +543,7 @@ Return ONLY valid JSON, no markdown, no preamble:
 {"specs":[{"name":"exact spec name","scenario":"...","sql":"..."}]}`;
 
   try {
-    const res = await fetch('https://qa-proxy.j-birum1.workers.dev', {
+    const res = await fetch('https://jbirum1cmd--0a9d8044400b11f1b41a42b51c65c3df.web.val.run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
