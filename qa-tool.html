@@ -1,1048 +1,761 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>QA Iteration Tool — HRM Enterprises</title>
 <style>
-  :root {
-    --bg:#ffffff;--bg2:#f7f6f3;--bg3:#f0efe9;
-    --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);
-    --text:#1a1a18;--text2:#5c5b57;--text3:#9b9a96;
-    --radius:8px;--radius-lg:12px;
-    --pass-bg:#EAF3DE;--pass-text:#3B6D11;--pass-border:#97C459;
-    --fail-bg:#FCEBEB;--fail-text:#A32D2D;--fail-border:#F09595;
-    --na-bg:#F1EFE8;--na-text:#5F5E5A;--na-border:#B4B2A9;
-    --blue:#185FA5;--blue-bg:#E6F1FB;
-    --font:-apple-system,'Segoe UI',sans-serif;
-    --mono:'Menlo','Consolas',monospace;
-  }
-  @media(prefers-color-scheme:dark){
-    :root{
-      --bg:#1c1c1a;--bg2:#242422;--bg3:#2c2c2a;
-      --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);
-      --text:#f0efe9;--text2:#a8a7a3;--text3:#686763;
-      --pass-bg:#173404;--pass-text:#C0DD97;--pass-border:#3B6D11;
-      --fail-bg:#501313;--fail-text:#F7C1C1;--fail-border:#A32D2D;
-      --na-bg:#2C2C2A;--na-text:#B4B2A9;--na-border:#5F5E5A;
-      --blue-bg:#042C53;
-    }
-  }
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:var(--font);font-size:14px;color:var(--text);background:var(--bg3);min-height:100vh}
-  .app{display:flex;flex-direction:column;min-height:100vh}
-  header{background:var(--bg);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100;gap:12px}
-  .logo{font-size:15px;font-weight:600;letter-spacing:-0.3px;white-space:nowrap}
-  .logo span{color:var(--text3);font-weight:400}
-  .header-right{display:flex;align-items:center;gap:10px}
-  .sync-status{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px;white-space:nowrap}
-  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--na-border);flex-shrink:0}
-  .sync-dot.ok{background:var(--pass-border)}
-  .sync-dot.err{background:var(--fail-border)}
-  .sync-dot.loading{background:var(--blue);animation:pulse 1s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-  .main{flex:1;max-width:840px;margin:0 auto;width:100%;padding:28px 20px 60px}
-  .step-bar{display:flex;align-items:center;gap:4px;margin-bottom:28px;flex-wrap:wrap}
-  .step{font-size:11px;padding:3px 12px;border-radius:20px;background:var(--bg2);color:var(--text3);border:1px solid var(--border);white-space:nowrap}
-  .step.active{background:var(--text);color:var(--bg);border-color:var(--text)}
-  .step.done{background:var(--pass-bg);color:var(--pass-text);border-color:var(--pass-border)}
-  .step-sep{font-size:10px;color:var(--text3)}
-  .screen{display:none}.screen.active{display:block}
-  h2{font-size:20px;font-weight:600;letter-spacing:-0.4px;margin-bottom:6px}
-  h3{font-size:16px;font-weight:600;margin-bottom:14px;letter-spacing:-0.3px}
-  .sub{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5}
-  .field{margin-bottom:16px}
-  .label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px;display:block}
-  select,input[type=text],textarea{font-family:var(--font);font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);padding:8px 11px;width:100%;transition:border-color 0.15s}
-  select:focus,input:focus,textarea:focus{outline:none;border-color:var(--blue)}
-  select{cursor:pointer}
-  textarea{resize:vertical;line-height:1.55}
-  button{font-family:var(--font);font-size:13px;cursor:pointer;border-radius:var(--radius);padding:8px 18px;border:1px solid var(--border2);background:var(--bg);color:var(--text);transition:all 0.12s;font-weight:500}
-  button:hover{background:var(--bg2)}
-  button:active{transform:scale(0.98)}
-  button:disabled{opacity:0.4;cursor:not-allowed;transform:none}
-  .btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}
-  .btn-primary:hover{opacity:0.88;background:var(--text)}
-  .btn-sm{font-size:12px;padding:5px 12px}
-  .btn-row{display:flex;gap:8px;align-items:center;margin-top:20px;flex-wrap:wrap}
-  .card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;margin-bottom:8px}
-  .pill{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600;white-space:nowrap;display:inline-block}
-  .pill-pass{background:var(--pass-bg);color:var(--pass-text)}
-  .pill-fail{background:var(--fail-bg);color:var(--fail-text)}
-  .pill-na{background:var(--na-bg);color:var(--na-text)}
-  .pill-empty{background:var(--bg2);color:var(--text3);border:1px solid var(--border)}
-  .pill-new{background:var(--blue-bg);color:var(--blue);font-size:10px;padding:1px 7px}
-  .spec-item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;cursor:pointer;transition:all 0.1s}
-  .spec-item:hover{background:var(--bg2)}
-  .spec-item.selected{border-color:var(--pass-border);background:var(--pass-bg)}
-  .spec-item input[type=checkbox]{margin-top:2px;flex-shrink:0;cursor:pointer;accent-color:var(--pass-text)}
-  .spec-item-body{flex:1}
-  .spec-item-name{font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px}
-  .spec-item-desc{font-size:12px;color:var(--text2);margin-top:2px}
-  .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
-  .scard{background:var(--bg2);border-radius:var(--radius);padding:12px;text-align:center}
-  .scard-label{font-size:11px;color:var(--text2);margin-bottom:4px}
-  .scard-val{font-size:22px;font-weight:600}
-  .tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)}
-  .tab{font-size:12px;padding:7px 16px;border-bottom:2px solid transparent;cursor:pointer;color:var(--text2);font-weight:500;margin-bottom:-1px}
-  .tab:hover{color:var(--text)}
-  .tab.active{color:var(--text);border-bottom-color:var(--text)}
-  .qa-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:8px;overflow:hidden}
-  .qa-card-header{display:flex;align-items:flex-start;justify-content:space-between;padding:12px 16px;cursor:pointer;gap:12px}
-  .qa-card-header:hover{background:var(--bg2)}
-  .qa-card-body{border-top:1px solid var(--border);padding:14px 16px;display:none}
-  .qa-card-body.open{display:block}
-  .pf-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-  .pf-label{font-size:12px;font-weight:500;color:var(--text2);min-width:56px}
-  .pf-btns{display:flex;gap:5px}
-  .pf-btn{font-size:12px;padding:4px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--bg);color:var(--text);cursor:pointer;font-weight:500}
-  .pf-btn:hover{background:var(--bg2)}
-  .pf-btn.p{background:var(--pass-bg);color:var(--pass-text);border-color:var(--pass-border)}
-  .pf-btn.f{background:var(--fail-bg);color:var(--fail-text);border-color:var(--fail-border)}
-  .pf-btn.n{background:var(--na-bg);color:var(--na-text);border-color:var(--na-border)}
-  .note-input{font-family:var(--font);font-size:12px;padding:5px 9px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);flex:1;min-width:140px}
-  .note-input:focus{outline:none;border-color:var(--blue)}
-  .ai-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin:12px 0 5px}
-  .ai-block{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;font-size:12px;line-height:1.65;color:var(--text);white-space:pre-wrap;max-height:180px;overflow-y:auto}
-  .sql-block{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--text);white-space:pre-wrap;max-height:220px;overflow-y:auto}
-  .err{font-size:12px;color:var(--fail-text);margin-top:8px;padding:8px 12px;background:var(--fail-bg);border-radius:var(--radius);border:1px solid var(--fail-border);display:none}
-  .err.show{display:block}
-  .add-spec-form{border:1px dashed var(--border2);border-radius:var(--radius-lg);padding:14px 16px;margin-top:16px;background:var(--bg2)}
-  .add-spec-form h4{font-size:13px;font-weight:600;margin-bottom:12px}
-  .toolbar{display:flex;gap:8px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap}
-  .toolbar-right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
-  .iter-list{margin-bottom:20px}
-  .iter-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px;background:var(--bg);cursor:pointer;transition:all 0.1s}
-  .iter-item:hover{background:var(--bg2);border-color:var(--border2)}
-  .iter-item-name{font-size:13px;font-weight:500}
-  .iter-item-meta{font-size:11px;color:var(--text3);margin-top:2px}
-  .iter-item-right{display:flex;align-items:center;gap:8px}
-  #toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:var(--bg);font-size:13px;padding:10px 18px;border-radius:var(--radius);opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999}
-  #toast.show{opacity:1}
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
-  .modal{background:var(--bg);border-radius:var(--radius-lg);padding:24px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
-  @media(max-width:600px){.summary-grid{grid-template-columns:repeat(2,1fr)}.main{padding:16px 12px 40px}}
+:root{--bg:#fff;--bg2:#f7f6f3;--bg3:#f0efe9;--border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);--text:#1a1a18;--text2:#5c5b57;--text3:#9b9a96;--r:8px;--rl:12px;--pass-bg:#EAF3DE;--pass-t:#3B6D11;--pass-b:#97C459;--fail-bg:#FCEBEB;--fail-t:#A32D2D;--fail-b:#F09595;--na-bg:#F1EFE8;--na-t:#5F5E5A;--na-b:#B4B2A9;--blue:#185FA5;--blue-bg:#E6F1FB;--font:-apple-system,'Segoe UI',sans-serif;--mono:'Menlo','Consolas',monospace}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1c1a;--bg2:#242422;--bg3:#2c2c2a;--border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--text:#f0efe9;--text2:#a8a7a3;--text3:#686763;--pass-bg:#173404;--pass-t:#C0DD97;--pass-b:#3B6D11;--fail-bg:#501313;--fail-t:#F7C1C1;--fail-b:#A32D2D;--na-bg:#2C2C2A;--na-t:#B4B2A9;--na-b:#5F5E5A;--blue-bg:#042C53}}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);font-size:14px;color:var(--text);background:var(--bg3);min-height:100vh}
+header{background:var(--bg);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100}
+.logo{font-size:15px;font-weight:600;letter-spacing:-.3px}
+.logo span{color:var(--text3);font-weight:400}
+.sync{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--na-b);flex-shrink:0;transition:background .3s}
+.dot.ok{background:var(--pass-b)}.dot.err{background:var(--fail-b)}.dot.spin{background:var(--blue);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.main{max-width:840px;margin:0 auto;padding:28px 20px 60px}
+.screen{display:none}.screen.active{display:block}
+.steps{display:flex;align-items:center;gap:4px;margin-bottom:28px;flex-wrap:wrap}
+.step{font-size:11px;padding:3px 12px;border-radius:20px;background:var(--bg2);color:var(--text3);border:1px solid var(--border);white-space:nowrap}
+.step.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.step.done{background:var(--pass-bg);color:var(--pass-t);border-color:var(--pass-b)}
+.sep{font-size:10px;color:var(--text3)}
+h2{font-size:20px;font-weight:600;letter-spacing:-.4px;margin-bottom:6px}
+h3{font-size:16px;font-weight:600;margin-bottom:14px;letter-spacing:-.3px}
+.sub{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.5}
+.field{margin-bottom:16px}
+label.lbl{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px;display:block}
+select,input[type=text],textarea{font-family:var(--font);font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border2);border-radius:var(--r);padding:8px 11px;width:100%}
+select:focus,input:focus,textarea:focus{outline:none;border-color:var(--blue)}
+select{cursor:pointer}textarea{resize:vertical;line-height:1.55}
+button{font-family:var(--font);font-size:13px;cursor:pointer;border-radius:var(--r);padding:8px 18px;border:1px solid var(--border2);background:var(--bg);color:var(--text);font-weight:500;transition:background .12s}
+button:hover{background:var(--bg2)}button:disabled{opacity:.4;cursor:not-allowed}
+.btn-p{background:var(--text);color:var(--bg);border-color:var(--text)}.btn-p:hover{opacity:.88;background:var(--text)}
+.btn-sm{font-size:12px;padding:5px 12px}
+.brow{display:flex;gap:8px;align-items:center;margin-top:20px;flex-wrap:wrap}
+.card{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:8px}
+.pill{font-size:11px;padding:2px 9px;border-radius:20px;font-weight:600;white-space:nowrap;display:inline-block}
+.pp{background:var(--pass-bg);color:var(--pass-t)}.pf{background:var(--fail-bg);color:var(--fail-t)}.pn{background:var(--na-bg);color:var(--na-t)}.pe{background:var(--bg2);color:var(--text3);border:1px solid var(--border)}.pnew{background:var(--blue-bg);color:var(--blue);font-size:10px;padding:1px 7px}
+.si{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;cursor:pointer}
+.si:hover{background:var(--bg2)}.si.on{border-color:var(--pass-b);background:var(--pass-bg)}
+.si input{margin-top:2px;flex-shrink:0;accent-color:var(--pass-t)}
+.si-name{font-size:13px;font-weight:500}.si-desc{font-size:12px;color:var(--text2);margin-top:2px}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px}
+.sc{background:var(--bg2);border-radius:var(--r);padding:12px;text-align:center}
+.sc-lbl{font-size:11px;color:var(--text2);margin-bottom:4px}.sc-val{font-size:22px;font-weight:600}
+.tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.tab{font-size:12px;padding:7px 16px;border-bottom:2px solid transparent;cursor:pointer;color:var(--text2);font-weight:500;margin-bottom:-1px}
+.tab:hover{color:var(--text)}.tab.on{color:var(--text);border-bottom-color:var(--text)}
+.qc{background:var(--bg);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:8px;overflow:hidden}
+.qch{display:flex;align-items:flex-start;justify-content:space-between;padding:12px 16px;cursor:pointer;gap:12px}
+.qch:hover{background:var(--bg2)}
+.qcb{border-top:1px solid var(--border);padding:14px 16px;display:none}
+.qcb.open{display:block}
+.pfrow{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.pflbl{font-size:12px;font-weight:500;color:var(--text2);min-width:56px}
+.pfbtns{display:flex;gap:5px}
+.pfb{font-size:12px;padding:4px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--bg);color:var(--text);cursor:pointer;font-weight:500}
+.pfb:hover{background:var(--bg2)}.pfb.p{background:var(--pass-bg);color:var(--pass-t);border-color:var(--pass-b)}.pfb.f{background:var(--fail-bg);color:var(--fail-t);border-color:var(--fail-b)}.pfb.n{background:var(--na-bg);color:var(--na-t);border-color:var(--na-b)}
+.ni{font-family:var(--font);font-size:12px;padding:5px 9px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);flex:1;min-width:140px}
+.ni:focus{outline:none;border-color:var(--blue)}
+.ai-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 5px}
+.ai-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;font-size:12px;line-height:1.65;white-space:pre-wrap;max-height:180px;overflow-y:auto}
+.sql-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:11px 13px;font-family:var(--mono);font-size:11px;line-height:1.7;white-space:pre-wrap;max-height:220px;overflow-y:auto}
+.reg-box{background:var(--fail-bg);border:1px solid var(--fail-b);border-radius:var(--r);padding:11px 13px;font-size:12px;line-height:1.65}
+.err{font-size:12px;color:var(--fail-t);margin-top:8px;padding:8px 12px;background:var(--fail-bg);border-radius:var(--r);border:1px solid var(--fail-b);display:none}
+.err.show{display:block}
+.adf{border:1px dashed var(--border2);border-radius:var(--rl);padding:14px 16px;margin-top:16px;background:var(--bg2)}
+.tb{display:flex;gap:8px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap}
+.tb-r{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.ii{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px;background:var(--bg);cursor:pointer}
+.ii:hover{background:var(--bg2);border-color:var(--border2)}
+.ii-name{font-size:13px;font-weight:500}.ii-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+.md{background:var(--bg);border-radius:var(--rl);padding:24px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:var(--bg);font-size:13px;padding:10px 18px;border-radius:var(--r);opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+#toast.show{opacity:1}
 </style>
 </head>
 <body>
-<div class="app">
 <header>
   <div class="logo">HRM QA Tool <span>/ Iteration Builder</span></div>
-  <div class="header-right">
-    <div class="sync-status">
-      <span class="sync-dot" id="syncDot"></span>
-      <span id="syncLabel">connecting…</span>
-    </div>
-  </div>
+  <div class="sync"><span class="dot" id="dot"></span><span id="syncLbl">connecting…</span></div>
 </header>
-
 <div class="main">
 
-<!-- SCREEN 1: Home -->
 <div class="screen active" id="s1">
-  <div class="step-bar">
-    <span class="step active">1 · program</span><span class="step-sep">›</span>
-    <span class="step">2 · specs</span><span class="step-sep">›</span>
-    <span class="step">3 · update</span><span class="step-sep">›</span>
-    <span class="step">4 · review</span><span class="step-sep">›</span>
-    <span class="step">5 · QA</span>
-  </div>
-
+  <div class="steps"><span class="step on">1 · program</span><span class="sep">›</span><span class="step">2 · specs</span><span class="sep">›</span><span class="step">3 · update</span><span class="sep">›</span><span class="step">4 · review</span><span class="sep">›</span><span class="step">5 · QA</span></div>
   <h2>QA Iterations</h2>
-  <p class="sub">Continue an existing iteration or start a new one. All data is saved automatically to your GitHub repository.</p>
-
+  <p class="sub">Continue an existing iteration or start a new one. All data is saved to your GitHub repository.</p>
   <div id="iterLoading" style="font-size:13px;color:var(--text2);margin-bottom:16px">Loading saved iterations…</div>
-  <div class="iter-list" id="iterList" style="display:none"></div>
-
-  <h3 style="margin-top:8px">Start new iteration</h3>
-  <div class="field">
-    <label class="label">Program</label>
-    <select id="progSel" onchange="onProgChange()">
-      <option value="">— select a program —</option>
-    </select>
-  </div>
-  <div class="field">
-    <label class="label">Iteration name</label>
-    <input type="text" id="iterName" placeholder="e.g. Festool Updates — Round 7" />
-  </div>
-  <div class="btn-row">
-    <button class="btn-primary" onclick="goToSpecs()">Next: choose specs →</button>
-  </div>
+  <div id="iterList" style="display:none;margin-bottom:20px"></div>
+  <h3>Start new iteration</h3>
+  <div class="field"><label class="lbl">Program</label><select id="progSel" onchange="onProgChange()"><option value="">— select a program —</option></select></div>
+  <div class="field"><label class="lbl">Iteration name</label><input type="text" id="iterName" placeholder="e.g. Festool Updates — Round 7"/></div>
+  <div class="brow"><button class="btn-p" onclick="goToSpecs()">Next: choose specs →</button></div>
 </div>
 
-<!-- SCREEN 2: Select specs -->
 <div class="screen" id="s2">
-  <div class="step-bar">
-    <span class="step done">1 · program</span><span class="step-sep">›</span>
-    <span class="step active">2 · specs</span><span class="step-sep">›</span>
-    <span class="step">3 · update</span><span class="step-sep">›</span>
-    <span class="step">4 · review</span><span class="step-sep">›</span>
-    <span class="step">5 · QA</span>
-  </div>
+  <div class="steps"><span class="step done">1 · program</span><span class="sep">›</span><span class="step on">2 · specs</span><span class="sep">›</span><span class="step">3 · update</span><span class="sep">›</span><span class="step">4 · review</span><span class="sep">›</span><span class="step">5 · QA</span></div>
   <h3>Select specs to carry forward</h3>
-  <p class="sub">Check every spec you want to test in this iteration. Uncheck any that are no longer relevant. Add new specs below if needed.</p>
-  <div style="display:flex;gap:8px;margin-bottom:10px">
-    <button class="btn-sm" onclick="selectAll(true)">Select all</button>
-    <button class="btn-sm" onclick="selectAll(false)">Deselect all</button>
+  <p class="sub">Check specs to test. Uncheck any no longer relevant. Add new specs below.</p>
+  <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn-sm" onclick="selAll(true)">Select all</button><button class="btn-sm" onclick="selAll(false)">Deselect all</button></div>
+  <div id="specList"></div>
+  <div class="adf"><h4 style="font-size:13px;font-weight:600;margin-bottom:12px">Add a new spec</h4>
+    <div class="field"><label class="lbl">Name</label><input type="text" id="newName" placeholder="e.g. New eligibility filter"/></div>
+    <div class="field"><label class="lbl">Description</label><textarea id="newDesc" rows="2" placeholder="What should this spec validate?"></textarea></div>
+    <button class="btn-sm" onclick="addSpec()">+ Add spec</button>
   </div>
-  <div id="specChecklist"></div>
-  <div class="add-spec-form">
-    <h4>Add a new spec</h4>
-    <div class="field">
-      <label class="label">Spec name</label>
-      <input type="text" id="newSpecName" placeholder="e.g. New eligibility filter" />
-    </div>
-    <div class="field">
-      <label class="label">Description</label>
-      <textarea id="newSpecDesc" rows="2" placeholder="What should this spec validate?"></textarea>
-    </div>
-    <button class="btn-sm" onclick="addNewSpec()">+ Add spec</button>
-  </div>
-  <div class="btn-row">
-    <button onclick="goTo('s1')">← Back</button>
-    <button class="btn-primary" onclick="goToUpdate()">Next: describe update →</button>
-  </div>
+  <div class="brow"><button onclick="goTo('s1')">← Back</button><button class="btn-p" onclick="goToUpdate()">Next: describe update →</button></div>
 </div>
 
-<!-- SCREEN 3: Describe update -->
 <div class="screen" id="s3">
-  <div class="step-bar">
-    <span class="step done">1 · program</span><span class="step-sep">›</span>
-    <span class="step done">2 · specs</span><span class="step-sep">›</span>
-    <span class="step active">3 · update</span><span class="step-sep">›</span>
-    <span class="step">4 · review</span><span class="step-sep">›</span>
-    <span class="step">5 · QA</span>
-  </div>
+  <div class="steps"><span class="step done">1 · program</span><span class="sep">›</span><span class="step done">2 · specs</span><span class="sep">›</span><span class="step on">3 · update</span><span class="sep">›</span><span class="step">4 · review</span><span class="sep">›</span><span class="step">5 · QA</span></div>
   <h3>Describe the program update</h3>
-  <p class="sub">Be as specific as you can — tables, fields, logic changes, and which channels are affected.</p>
-  <div class="field">
-    <label class="label">What changed?</label>
-    <textarea id="updateDesc" rows="6" placeholder="e.g. Added null check on catalog alias table join to prevent kit skus from being silently dropped when catalog_alias records are missing or have null fields."></textarea>
-  </div>
-  <div class="field">
-    <label class="label">Which specs are directly affected? (optional)</label>
-    <input type="text" id="affectedSpecs" placeholder="e.g. Kit inventory, All festool products" />
-  </div>
+  <p class="sub">Be as specific as you can — tables, fields, logic changes, channels affected.</p>
+  <div class="field"><label class="lbl">What changed?</label><textarea id="updateDesc" rows="6" placeholder="e.g. Added null check on catalog alias join to prevent kit skus from silently dropping."></textarea></div>
+  <div class="field"><label class="lbl">Which specs are directly affected? (optional)</label><input type="text" id="affSpecs" placeholder="e.g. Kit inventory, All festool products"/></div>
   <div class="err" id="genErr"></div>
-  <div class="btn-row">
-    <button onclick="goTo('s2')">← Back</button>
-    <button class="btn-primary" id="btnGen" onclick="generateScenarios()">Generate prompt →</button>
-  </div>
+  <div class="brow"><button onclick="goTo('s2')">← Back</button><button class="btn-p" onclick="generatePrompt()">Generate prompt →</button></div>
 </div>
 
-<!-- SCREEN 4: Review -->
 <div class="screen" id="s4">
-  <div class="step-bar">
-    <span class="step done">1 · program</span><span class="step-sep">›</span>
-    <span class="step done">2 · specs</span><span class="step-sep">›</span>
-    <span class="step done">3 · update</span><span class="step-sep">›</span>
-    <span class="step active">4 · review</span><span class="step-sep">›</span>
-    <span class="step">5 · QA</span>
-  </div>
+  <div class="steps"><span class="step done">1 · program</span><span class="sep">›</span><span class="step done">2 · specs</span><span class="sep">›</span><span class="step done">3 · update</span><span class="sep">›</span><span class="step on">4 · review</span><span class="sep">›</span><span class="step">5 · QA</span></div>
   <h3>Review generated scenarios</h3>
-  <p class="sub">AI-generated test scenarios and validation SQL for each spec. Edit anything before starting QA.</p>
-  <div id="scenarioList"></div>
-  <div class="btn-row">
-    <button onclick="goTo('s3')">← Back</button>
-    <button class="btn-primary" onclick="startQA()">Start QA →</button>
-  </div>
+  <p class="sub">Edit anything before starting QA.</p>
+  <div id="scenList"></div>
+  <div class="brow"><button onclick="goTo('s3')">← Back</button><button class="btn-p" onclick="startQA()">Start QA →</button></div>
 </div>
 
-<!-- SCREEN 5: Active QA -->
 <div class="screen" id="s5">
-  <div class="step-bar">
-    <span class="step done">1 · program</span><span class="step-sep">›</span>
-    <span class="step done">2 · specs</span><span class="step-sep">›</span>
-    <span class="step done">3 · update</span><span class="step-sep">›</span>
-    <span class="step done">4 · review</span><span class="step-sep">›</span>
-    <span class="step active">5 · QA</span>
+  <div class="steps"><span class="step done">1 · program</span><span class="sep">›</span><span class="step done">2 · specs</span><span class="sep">›</span><span class="step done">3 · update</span><span class="sep">›</span><span class="step done">4 · review</span><span class="sep">›</span><span class="step on">5 · QA</span></div>
+  <div class="tb">
+    <div><h3 id="qaTitle" style="margin:0"></h3><div id="qaProg" style="font-size:12px;color:var(--text2);margin-top:2px"></div></div>
+    <div class="tb-r"><button class="btn-sm" onclick="addSpecMid()">+ Add spec</button><button class="btn-sm" onclick="addRound()">+ New round</button><button class="btn-sm" onclick="goTo('s1')">← All iterations</button></div>
   </div>
-  <div class="toolbar">
-    <div>
-      <h3 id="qaTitle" style="margin:0"></h3>
-      <div id="qaProgLabel" style="font-size:12px;color:var(--text2);margin-top:2px"></div>
-    </div>
-    <div class="toolbar-right">
-      <button class="btn-sm" onclick="addSpecMidQA()">+ Add spec</button>
-      <button class="btn-sm" onclick="addRound()">+ New round</button>
-      <button class="btn-sm" onclick="goTo('s1')">← All iterations</button>
-    </div>
-  </div>
-  <div class="summary-grid" id="summaryGrid"></div>
-  <div class="tabs" id="roundTabs"></div>
-  <div id="qaSpecList"></div>
-  <div class="btn-row" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-    <button onclick="copyRound()">📋 Copy round results</button>
-    <button onclick="saveToGitHub()" class="btn-primary" id="btnSave">💾 Save to GitHub</button>
+  <div class="sgrid" id="summary"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="qaList"></div>
+  <div class="brow" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+    <button onclick="copyRound()">Copy round results</button>
+    <button class="btn-p" onclick="saveNow()">Save to GitHub</button>
   </div>
 </div>
 
-</div>
 </div>
 <div id="toast"></div>
 
 <script>
-// === CONFIG ===
-const GITHUB_TOKEN = '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';
-const GITHUB_REPO = 'HRMEnterprises/QA';
-const GITHUB_FILE = 'qa-data.json';
+// CONFIG
+var GH_TOKEN = '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';
+var GH_REPO = 'HRMEnterprises/QA';
+var GH_FILE = 'qa-data.json';
 
-// === PROGRAM SPECS ===
-const QA_DATA = {
-  "Akeneo Appliance Feed":{specs:[
-    {name:"All appropriate skus are sent",description:"Home Source skus not obsolete and ADC, or already in Akeneo without archive status"},
-    {name:"Scheduled run times",description:"Program runs at scheduled time intervals"},
-    {name:"shopify_status",description:"New products = draft, obsolete = archive, all others leave unchanged"},
-    {name:"Shopify_physical",description:"Set to 1 only on first send"},
-    {name:"shopify inventory tracked",description:"Hard code to 1 only on first run"},
-    {name:"Web yes/no",description:"If obsolete: web no. Otherwise look to Eagle to drive web value."},
-    {name:"Appliance type",description:"Send type from mapping table (homesource types to Akeneo type codes)"},
-    {name:"Appliance UPC",description:"Only for Bosch (manufacturer ID 21). Strip UPC code from value."},
-    {name:"UPC does not exist",description:"If Bosch with UPC send 0, else 1. Push every time."},
-    {name:"Pricing",description:"Retail = umrp, fallback msrp, fallback higher of calculated cost or map price."},
-    {name:"in_stores",description:"Use Eagle in_store as string, plus ADC"},
-    {name:"Delta feed",description:"Build results table each run; send only deltas vs prior run"}
-  ]},
-  "Akeneo Product Feed":{specs:[
-    {name:"All appropriate skus are sent",description:"Eagle web=yes skus from designated stores and NO kits with active flag=yes"},
-    {name:"Scheduled run times",description:"Program runs at scheduled time intervals"},
-    {name:"Discontinued & Close out",description:"Multi-option field indicating which stores a product is discontinued/closed out in"},
-    {name:"Shopify_physical",description:"Send current Akeneo value, or default 1 if null"},
-    {name:"Shopify_Inventory_Tracked",description:"Send current Akeneo value, or default 1 if null"},
-    {name:"shopify_status",description:"Set new products to draft on first send only"},
-    {name:"Web yes/no - products",description:"Web yes on first send; web no when set to no in all stores"},
-    {name:"Web yes/no - kits",description:"Web yes on first send; web no when active flag no in all warehouse locations"},
-    {name:"Kit store location",description:"Use product_warehouse table to warehouse, convert to in-stores string"},
-    {name:"Kit quantities",description:"Lowest buildable component per store location using floor-divide logic"},
-    {name:"Product store location",description:"Use Eagle in_store as string"},
-    {name:"UPC sourcing",description:"Priority: Primary UPC, MUPC, most recently used UPC (12 digits only)"},
-    {name:"Product Pricing",description:"Retail price all products; promo price website channels only"},
-    {name:"Delta feed",description:"Send only deltas vs prior run"}
-  ]},
-  "Festool Updates":{specs:[
-    {name:"All festool products",description:"Stores 1 & 2: not discontinued OR discontinued with QOH > 0"},
-    {name:"Missing catalog alias records",description:"Kit MPNs from catalog alias. Report dropped records rather than silently dropping."},
-    {name:"No duplicate skus",description:"No duplicate skus on final output"},
-    {name:"Product inventory",description:"Combined QOH stores 1 & 2, no buffers"},
-    {name:"Kit inventory",description:"Combined QOH stores 1 & 2 using MIN(FLOOR(QOH/component_qty)), no buffers"},
-    {name:"Shopify product link",description:"Shopify store link sent to Festool for each product"}
-  ]},
-  "Kit Update Logic":{specs:[
-    {name:"Eligible order validation",description:"All orders meeting program criteria are identified"},
-    {name:"Required fields are pulled and populated",description:"All Shopify required data obtained and sent by program"},
-    {name:"Multiple line items for nonkits HH",description:"Only shipping line item updated; other line item picked up later"},
-    {name:"Multiple line items for kits HH",description:"Multiple shipments: program reports oldest shipped date"},
-    {name:"Shopify site updated & logged HH",description:"Data communicated to Shopify, successes and failures logged"},
-    {name:"Programs run on schedule",description:"Every 30 minutes"}
-  ]},
-  "Shop Shipping Feed":{specs:[
-    {name:"Eligible order validation",description:"All orders meeting program criteria identified"},
-    {name:"Required fields are pulled and populated",description:"All Shopify required data obtained and sent"},
-    {name:"Multiple shipments HH",description:"Multiple shipments same line: oldest shipped date reported"},
-    {name:"Multiple line items HH",description:"Partial shipment: correct line item updated, other picked up later"},
-    {name:"Multiple shipments LEH",description:"Multiple shipments same line: oldest shipped date reported"},
-    {name:"Multiple line items LEH",description:"Partial shipment: correct line item updated, other picked up later"},
-    {name:"Shopify site updated & logged HH",description:"Data communicated to HH Shopify, logged"},
-    {name:"Shopify site updated & logged LEH",description:"Data communicated to LEH Shopify, logged"},
-    {name:"Programs run on schedule",description:"Every 30 minutes"}
-  ]},
-  "Shopify Inventory Updates":{specs:[
-    {name:"Sku validation",description:"All Shopify skus present in output, none dropping out"},
-    {name:"HK quantities",description:"QOH minus committed, product reserve, safety stock, Amazon pending. Shop pending and open orders added back."},
-    {name:"Shopify open orders",description:"Shop location uses HHTotal from table function without deducting shopify quantity ordered"},
-    {name:"Location IDs",description:"All location IDs valid in output"},
-    {name:"Gift Cards",description:"Fixed inventory value of 9999 for gift card skus"},
-    {name:"Dropship",description:"Fixed inventory value of 9999 for dropship products LEH only"}
-  ]},
-  "Shopify Homesource Inventory Updates":{specs:[
-    {name:"Sku validation for HH & MDFD",description:"All Shopify skus present, none dropping out"},
-    {name:"Hartville location inventory",description:"QOH minus committed, product reserve, safety stock loc 1, minus Amazon pending, plus shopify open orders."},
-    {name:"Middlefield location inventory",description:"QOH minus committed, safety stock loc 1, minus Amazon pending. Add Homesource inventory if exists."}
-  ]},
-  "Inventory Rewrite — Shopify":{specs:[
-    {name:"Sku validation",description:"All Shopify skus present, none dropping out"},
-    {name:"HH Store Quantity",description:"QOH minus committed, product reserve, safety stock, Amazon and Shopify pending loc 1 HHH"},
-    {name:"Shop Loc Inventory",description:"HHTotal from table function, no shopify quantity deduction"},
-    {name:"MFLD Store Quantity",description:"QOH minus committed, safety stock, Amazon pending loc 4"},
-    {name:"Kitting",description:"Component skus mapped to kit sku; kit inventory reported under kit sku"},
-    {name:"Location IDs",description:"All location IDs valid"},
-    {name:"Delta update",description:"Inventory updates only, not full sku list every run"},
-    {name:"Dropship",description:"Fixed value 9999 for dropship LEH only"}
-  ]},
-  "Inventory Rewrite — CV3":{specs:[
-    {name:"Buffer",description:"Fixed reserve applied to store locations only, not FC"},
-    {name:"LEH Store Quantity",description:"QOH minus committed, product reserve, safety stock loc 7 LHAK, minus buffer"},
-    {name:"HH Store Quantity",description:"QOH minus committed, product reserve, safety stock loc 1 HHH, minus buffer"},
-    {name:"Total LEH Inventory",description:"LEH Store plus FC quantities minus Amazon Pending deducted once at total level"},
-    {name:"Total HH Inventory",description:"HH Store plus FC quantities minus Amazon Pending deducted once at total level"},
-    {name:"Kitting",description:"Component skus mapped to kit sku; kit inventory reported under kit sku"}
-  ]},
-  "FBM Updates":{specs:[
-    {name:"FBM to Eagle sku - inventory feed",description:"Amazon FBM skus join to stripped Eagle sku, data pulls, rejoins to FBM sku"},
-    {name:"FBM to NO sku - Amazon orders feed",description:"Amazon FBM skus stripped and correct data sent to NO"}
-  ]},
-  "QOH Update":{specs:[
-    {name:"Sku set",description:"All product skus matching on location and not in primary vendor exclusion are updating"},
-    {name:"QOH",description:"NO product total quantity updated to correct value matching Eagle QOH"},
-    {name:"FBA",description:"FBA skus handled appropriately, FBA suffix, mapped to HTOOL warehouse"}
-  ]},
-  "POR Feed":{specs:[
-    {name:"Only rental items",description:"Program only sends rental items"},
-    {name:"Send 4 hour rental pricing",description:"4 hour rental pricing correctly sent"},
-    {name:"Send 1 day rental pricing",description:"1 day rental pricing correctly sent"},
-    {name:"Send 1 week rental pricing",description:"1 week rental pricing correctly sent"},
-    {name:"Delta feed",description:"All price updates correctly identified and sent"}
-  ]}
+// PROGRAM DATA
+var PROGRAMS = {
+  "Akeneo Appliance Feed": [
+    {n:"All appropriate skus are sent",d:"Home Source skus not obsolete and ADC, or already in Akeneo without archive status"},
+    {n:"Scheduled run times",d:"Program runs at scheduled time intervals"},
+    {n:"shopify_status",d:"New products = draft, obsolete = archive, all others leave unchanged"},
+    {n:"Shopify_physical",d:"Set to 1 only on first send"},
+    {n:"shopify inventory tracked",d:"Hard code to 1 only on first run"},
+    {n:"Web yes/no",d:"If obsolete: web no. Otherwise look to Eagle to drive web value."},
+    {n:"Appliance type",d:"Send type from mapping table (homesource types to Akeneo type codes)"},
+    {n:"Appliance UPC",d:"Only for Bosch manufacturer ID 21. Strip UPC code from value."},
+    {n:"UPC does not exist",d:"If Bosch with UPC send 0, else 1. Push every time."},
+    {n:"List Price",d:"Send current retail price calculation to list price attribute. Uses umrp, fallback msrp, fallback higher of calculated cost or map price. Source: titan.integration.dbo.centerspecappliances."},
+    {n:"Retail Price",d:"Retail price equals sales price where one exists, otherwise uses current retail price calculation — coalesce(sales price, retail price). Source: titan.integration.dbo.centerspecappliances."},
+    {n:"in_stores",d:"Use Eagle in_store as string, plus ADC"},
+    {n:"Delta feed",d:"Build results table each run; send only deltas vs prior run"},
+    {n:"ERP Create Date",d:"Send oldest insert date from the HomeSource product table to Akeneo for appliances that are not obsolete. Source: titan.integration.dbo.centerspecappliances InsertDate field. Must identify oldest insert date when multiple records exist."}
+  ],  "Akeneo Product Feed": [
+    {n:"All appropriate skus are sent",d:"Eagle web=yes skus from designated stores and NO kits with active flag=yes"},
+    {n:"Scheduled run times",d:"Program runs at scheduled time intervals"},
+    {n:"Discontinued and Close out",d:"Multi-option field indicating which stores a product is discontinued or closed out in"},
+    {n:"Shopify_physical",d:"Send current Akeneo value, or default 1 if null"},
+    {n:"Shopify_Inventory_Tracked",d:"Send current Akeneo value, or default 1 if null"},
+    {n:"shopify_status",d:"Set new products to draft on first send only"},
+    {n:"Web yes/no - products",d:"Web yes on first send; web no when set to no in all stores"},
+    {n:"Web yes/no - kits",d:"Web yes on first send; web no when active flag no in all warehouse locations"},
+    {n:"Kit store location",d:"Use product_warehouse table to warehouse, convert to in-stores string"},
+    {n:"Kit quantities",d:"Lowest buildable component per store location using floor-divide logic"},
+    {n:"Product store location",d:"Use Eagle in_store as string"},
+    {n:"UPC sourcing",d:"Priority: Primary UPC, MUPC, most recently used UPC 12 digits only"},
+    {n:"Product Pricing",d:"Retail price all products; promo price website channels only"},
+    {n:"Delta feed",d:"Send only deltas vs prior run"}
+  ],
+  "Festool Updates": [
+    {n:"All festool products",d:"Stores 1 and 2: not discontinued OR discontinued with QOH greater than 0"},
+    {n:"Missing catalog alias records",d:"Kit MPNs from catalog alias. Report dropped records rather than silently dropping."},
+    {n:"No duplicate skus",d:"No duplicate skus on final output"},
+    {n:"Product inventory",d:"Combined QOH stores 1 and 2, no buffers"},
+    {n:"Kit inventory",d:"Combined QOH stores 1 and 2 using MIN(FLOOR(QOH/component_qty)), no buffers"},
+    {n:"Shopify product link",d:"Shopify store link sent to Festool for each product"}
+  ],
+  "Kit Update Logic": [
+    {n:"Eligible order validation",d:"All orders meeting program criteria are identified"},
+    {n:"Required fields are pulled and populated",d:"All Shopify required data obtained and sent by program"},
+    {n:"Multiple line items for nonkits HH",d:"Only shipping line item updated; other line item picked up later"},
+    {n:"Multiple line items for kits HH",d:"Multiple shipments: program reports oldest shipped date"},
+    {n:"Shopify site updated and logged HH",d:"Data communicated to Shopify, successes and failures logged"},
+    {n:"Programs run on schedule",d:"Every 30 minutes"}
+  ],
+  "Shop Shipping Feed": [
+    {n:"Eligible order validation",d:"All orders meeting program criteria identified"},
+    {n:"Required fields are pulled and populated",d:"All Shopify required data obtained and sent"},
+    {n:"Multiple shipments HH",d:"Multiple shipments same line: oldest shipped date reported"},
+    {n:"Multiple line items HH",d:"Partial shipment: correct line item updated, other picked up later"},
+    {n:"Multiple shipments LEH",d:"Multiple shipments same line: oldest shipped date reported"},
+    {n:"Multiple line items LEH",d:"Partial shipment: correct line item updated, other picked up later"},
+    {n:"Shopify site updated and logged HH",d:"Data communicated to HH Shopify, logged"},
+    {n:"Shopify site updated and logged LEH",d:"Data communicated to LEH Shopify, logged"},
+    {n:"Programs run on schedule",d:"Every 30 minutes"}
+  ],
+  "Shopify Inventory Updates": [
+    {n:"Sku validation",d:"All Shopify skus present in output, none dropping out"},
+    {n:"HK quantities",d:"QOH minus committed, product reserve, safety stock, Amazon pending. Shop pending and open orders added back."},
+    {n:"Shopify open orders",d:"Shop location uses HHTotal from table function without deducting shopify quantity ordered"},
+    {n:"Location IDs",d:"All location IDs valid in output"},
+    {n:"Gift Cards",d:"Fixed inventory value of 9999 for gift card skus"},
+    {n:"Dropship",d:"Fixed inventory value of 9999 for dropship products LEH only"}
+  ],
+  "Shopify Homesource Inventory Updates": [
+    {n:"Sku validation for HH and MDFD",d:"All Shopify skus present, none dropping out"},
+    {n:"Hartville location inventory",d:"QOH minus committed, product reserve, safety stock loc 1, minus Amazon pending, plus shopify open orders."},
+    {n:"Middlefield location inventory",d:"QOH minus committed, safety stock loc 1, minus Amazon pending. Add Homesource inventory if exists."}
+  ],
+  "Inventory Rewrite Shopify": [
+    {n:"Sku validation",d:"All Shopify skus present, none dropping out"},
+    {n:"HH Store Quantity",d:"QOH minus committed, product reserve, safety stock, Amazon and Shopify pending loc 1 HHH"},
+    {n:"Shop Loc Inventory",d:"HHTotal from table function, no shopify quantity deduction"},
+    {n:"MFLD Store Quantity",d:"QOH minus committed, safety stock, Amazon pending loc 4"},
+    {n:"Kitting",d:"Component skus mapped to kit sku; kit inventory reported under kit sku"},
+    {n:"Location IDs",d:"All location IDs valid"},
+    {n:"Delta update",d:"Inventory updates only, not full sku list every run"},
+    {n:"Dropship",d:"Fixed value 9999 for dropship LEH only"}
+  ],
+  "Inventory Rewrite CV3": [
+    {n:"Buffer",d:"Fixed reserve applied to store locations only, not FC"},
+    {n:"LEH Store Quantity",d:"QOH minus committed, product reserve, safety stock loc 7 LHAK, minus buffer"},
+    {n:"HH Store Quantity",d:"QOH minus committed, product reserve, safety stock loc 1 HHH, minus buffer"},
+    {n:"Total LEH Inventory",d:"LEH Store plus FC quantities minus Amazon Pending deducted once at total level"},
+    {n:"Total HH Inventory",d:"HH Store plus FC quantities minus Amazon Pending deducted once at total level"},
+    {n:"Kitting",d:"Component skus mapped to kit sku; kit inventory reported under kit sku"}
+  ],
+  "Shopify Order Imports": [
+    {n:"All orders import",d:"All unlocked Shopify orders import to ImportedOrders table after order ages 30 mins. All unlocked orders import to ShopifyPending table within first 30 minutes (table rebuilt each pull). Successful imports are locked in Shopify. Tables: integration.ordimp.ImportedOrders, integration.ordimp.LineItemRecords, integration.ordimp.shopifyorders, integration.ordimp.shopifyorderitems, integration.inv.ShopifyPending."},
+    {n:"Kickout",d:"Orders with skus not existing in Natural Order are flagged and sent to kickout table (integration.ordimp.orderkickout). Kickout orders import to ImportedOrders but not shopifyorders. Orders successfully import to shopifyorders after skus are entered in NO."},
+    {n:"Program scheduled",d:"Program runs on a scheduler and successfully completes every 30 minutes."},
+    {n:"Data validity and completion",d:"All required information imports with each order. All fields populated correctly on ImportedOrders, shopifyorders, shopifyorderitems, and LineItemRecords tables."},
+    {n:"Case specific testing",d:"Program passes all case specific scenarios: qty changes within 30 min window, multi-line orders with cancellations, address additions, BOGO promo codes, personalization items, preorders, Prop 65 handling, custom discounts, address corrections, and payment gateway recording."},
+    {n:"Outbound file",d:"All orders and required information are included on outbound file to Natural Order. Prop 65 message pulls correctly for California addresses."},
+    {n:"ChannelName",d:"Online orders populate ChannelName = Online in integration.ordimp.shopifyorders. Phone orders leave ChannelName NULL (not empty string). Column exists with correct data type. Pre-existing imported orders not overwritten. Program reads channel type from Shopify API, not hardcoded."},
+    {n:"Missing shipping address handling",d:"Non-BOPIS orders with no shipping address are not locked in Shopify and not imported to Natural Order. Program creates CS exception notification. BOPIS orders without shipping address still process normally. If address is added to Shopify order after original attempt, program imports on next pull."},
+    {n:"Shopify risk recommendation - fraud check",d:"Orders with Shopify risk = cancel or investigate are flagged with FC status on integration.ordimp.shopifyorders. FC-flagged orders appear in Fraud Check Hold bucket in Natural Order UI. Orders with risk = none import normally without FC status."}
+  ],
+  "BOPIS Orders": [
+    {n:"All orders import",d:"Gets orders with either a status of bopis ready, or a status of closed that are also on the ShopifyBopisUpdates table. Source tables: titan.testing.dbo.orders, titan.testing.dbo.line_item, ORDUPD.ShopifyBopisUpdates. Fields: order_number, import_order_number, warehouse_code, status_code, creation_dtm, sku, canceled_quantity, quantity_ordered."},
+    {n:"Case specific testing",d:"Program passes all case specific scenarios: single line item BOPIS for HH and MF locations, multi-line orders with all items as BOPIS, multi-line orders with mix of BOPIS and shipping (Shopify limitation - cannot split), program handling when button is hit in Shopify during same pull as other orders."},
+    {n:"Shopify website updates",d:"Shopify website is updated as either ready for pick up or picked up where appropriate after BOPIS order processing."},
+    {n:"Program scheduled",d:"Program runs successfully on a scheduler."},
+    {n:"Multi line orders",d:"Orders with multiple line items do not trigger warning emails. All line items on multi-line BOPIS orders process correctly for both HH and MF locations."}
+  ],
+  "FBM Updates": [
+    {n:"FBM to Eagle sku inventory feed",d:"Amazon FBM skus join to stripped Eagle sku, data pulls, rejoins to FBM sku"},
+    {n:"FBM to NO sku Amazon orders feed",d:"Amazon FBM skus stripped and correct data sent to NO"}
+  ],
+  "QOH Update": [
+    {n:"Sku set",d:"All product skus matching on location and not in primary vendor exclusion are updating"},
+    {n:"QOH",d:"NO product total quantity updated to correct value matching Eagle QOH"},
+    {n:"FBA",d:"FBA skus handled appropriately, FBA suffix, mapped to HTOOL warehouse"}
+  ],
+  "POR Feed": [
+    {n:"Only rental items",d:"Program only sends rental items"},
+    {n:"Send 4 hour rental pricing",d:"4 hour rental pricing correctly sent"},
+    {n:"Send 1 day rental pricing",d:"1 day rental pricing correctly sent"},
+    {n:"Send 1 week rental pricing",d:"1 week rental pricing correctly sent"},
+    {n:"Delta feed",d:"All price updates correctly identified and sent"}
+  ]
 };
 
-// === HISTORY (from all QA sheets) ===
-const QA_HISTORY_PATTERNS = `Data integrity & validation (failed 9x across programs)
-Web yes/no (failed 5x across programs)
-ERP Create Date (failed 5x across programs)
-All appropriate skus are sent (failed 4x across programs)
-UPC does not exist (failed 4x across programs)
-All festool products (failed 4x across programs)
-Location IDs (failed 4x across programs)
-Scheduled run times (failed 3x across programs)
-shopify_status (failed 3x across programs)
-Shopify_physical (failed 3x across programs)
-Shop Loc Inventory (failed 3x across programs)
-Sku set (failed 3x across programs)
-Middlefield location inventory (failed 3x across programs)
-Kit store location (failed 2x across programs)
-Product Pricing (failed 2x across programs)
-Kit inventory (failed 2x across programs)
-HH Store Quantity (failed 2x across programs)
-MFLD Story Quantity (failed 2x across programs)
-Kitting (failed 2x across programs)
-Hartville location inventory (failed 2x across programs)`;
-const QA_HISTORY_FULL = `[Akeneo Appliance Feed]
-  All appropriate skus are sent: N - 51 discrepancies | N - 53 discrepancies, obsolete but feed not setting to archive
-  Scheduled run times: N - currently running at 1 & 1, change to 1am & 3pm to keep feed order consistant | N - schedule not updated
-  shopify_status: N - 344 obsolete skus still active or draft in Akeneo | N - still have 300+ skus as active or draft that have obsolete dates
-  shopify inventory tracked: N - feed is overriding value on subsequent sends
-  Web yes/no: N - feed not setting active appliances to web yes nor setting obsoletes to web no | N - still 2000+ discrepancies
-  UPC does not exist: N - 309 discrepancies, some are flipping back and forth each time the program runs | N - 17 discrepancies
-  Pricing: N - Pricing logic is probably ok, but program is not updating obsoletes that are already in Akeneo, 
-  Data source: Note: some homesource appliances are in eagle, and the data source going to Akeneo is Eagle. Do we w
-[Akeneo Product Feed]
-  All appropriate skus are sent: N - bug in join to datawarehouse table
-  Scheduled run times: N - left on disabled
-  Discontinued & Close out: N - close out discrepancies. Feed not sending updates when Eagle values are null.
-  Shopify_physical: N - SQL bug treating all comparisons as matches. Values in Akeneo are remaining null | N - still null
-  Shopify_Inventory_Tracked: N - program overrides current value
-  shopify_status: N - set shopify status back to draft
-  Web yes/no - products: N - Amazon channel using 1 & 7 in logic; notes: Jenn to decide if we update now or later. All other 
-  Kit store location: N - location for ~4000 skus do not match. Confirm logic. | N - 3 discrepancies
-  Kit quantities: N - mulitple issues. See Kit quantities tab.
-  Product store location: N - 3299 discrpancies, mostly on stores 12 & 18
-  UPC does not exist: N - sending null values | N - sending null values
-  Product Pricing: N - promo pricing being sent in Amazon channel, null values not updating, some price values not upda | N - 231 discrepancies
-[Appliance Image]
-  Successfully downloaded images are marked IsDownloaded = 1, IsError = 0 (or NULL): N - some images were not correctly updated in table
-  Errored images are marked IsError = 1: N - some images were not correctly updated in table
-[ERP addition appliance]
-  ERP Create Date: N - program not consistently identifying oldest insert date when multiple records exist on centerspe | N - program trying to match on model over sku
-[ERP addition product]
-  ERP Create Date: N - discrepancies on both feed & in akeneo sandbox. Feed discrepancies caused by incorrect join on k | N - erp date from kit table not set up to insert into #tmp table
-  ERP Appliances: N - overriding appliance feed dates. Added coalesce logic.
-[FBM Updates]
-  FBM to Eagle sku - inventory feed: N - nulls on catalog alias table are inadvertanly dropping 8 kit skus
-[Festool Updates]
-  All festool products: N - need to add quantity on hand > 0 logic to include discontinued items with inventory | N - pulling in non-Festool kits (JD and 5V&VA)
-  No duplicate skus: N  - discovered issue with kits being pulled multiple times for the kit logic and then the kit sku l
-  Kit inventory: N | N - kit QOH duplicated due to join, and min component quantities taken across  components within sto
-[Inventory Rewrite Amazon]
-  Prime buffer: N - >= needs changed to <=
-  Fulfilled by Amazon (FBA): N - FBA skus not properly identified
-[Inventory Rewrite CV3]
-  Quantity on order: No known need for this field. Leaving as it was in old feed for CV3
-  LEH Store Quantity: N - Amazon Pending being deducted incorrectly into store specific quantities, resulting in the same 
-  HH Store Quantity: N - Amazon Pending being deducted incorrectly into store specific quantities, resulting in the same 
-  LEH FC Quantity: N - Amazon Pending being deducted incorrectly into store specific quantities, resulting in the same 
-  HH FC Quantity: N - Amazon Pending being deducted incorrectly into store specific quantities, resulting in the same 
-  Total LEH Inventory: N - Amazon Pending should be deducted here so that it only comes out once per channel
-  Total HH Inventory: N - Amazon Pending should be deducted here so that it only comes out once per channel
-[Inventory Rewrite Shopify]
-  Sku validation: N - Dropping Home Source skus from feed because logic wasn't added to bring them in
-  HH Store Quantity: N - was not deducting Amazon pending (quantity ordered)
-  Shop Loc Inventory: N - was deducting shopify pending orders in table function, which should not deduct from this feed
-  MFLD Story Quantity: N - was not deducting Amazon pending (quantity ordered)
-  Kitting: N - kitting not applied to HH and MFLD feeds | N - component skus not being linked back to parent skus in final output
-  Location IDs: N - LEH prod location being used instead of sandbox. Needs to update in mapping tables and case stat | N - mapping table was updated, but case statement was not
-[Inventory Rewrite Update Shopify Open Orders]
-  Shop Loc Inventory: N - HHH specific logic applied to entire shop open table, affecting other location logic inappropria | N - warehouses 8 & 2 for open orders should be added to HH & LEH shop locations
-[Inventory total table function updates]
-  MFLD Story Quantity: N - still going negative. Zeroing logic not applied to st4 location
-[Kit Update Logic]
-  Eligible order validation: N - kit line items not falling off stored proc
-  Multiple line items for nonkits HH: N - program not ordering tracking numbers
-[POR]
-  Delta feed - all price updates correctly identified and sent: N
-[POR New updates]
-  Set web value, force push. Delta updates.: N - did not update web
-[QOH]
-  Sku set: N - 287 skus with mismatched quantities
-  QOH: N - 287 skus with mismatched quantities
-[QOH Round 3]
-  Sku set: N - drops 4 skus due to SO rule | N - 6 skus with a silent ignore. Added additional logic
-[Shop Shipping Feed]
-  Multiple line items HH: N - program applying shipping info for one line item to all line items
-  Multiple shipments LEH: N - multiple shipments failing stored proc
-  Multiple line items LEH: N - LEH & HH operating different. HH has one record per order on tracking table, LEH has multiple. N
-  Shopify site updated & logged LEH: N - program not built to submit to LEH channel
-[Shopify Homesource Inventory Updates]
-  Hartville location inventory: N - stock added to wrong location (shop) rather than HH and MDFD | N - bug surrounding open orders logic
-  Middlefield location inventory: N - stock added to wrong location (shop) rather than HH and MDFD | N - open orders being deducted when it shouldn't be. No product reserve to deduct from
-[Shopify Inventory Updates]
-  Shopify open orders: N - open orders are not being added to hk quantities, and shop pending is being added to middlefield | N - shop pending needs removed from the HH & MID kit calculations
-[UPC Updates]
-  UPC updates in Akeneo: N - 150 skus did not update. Required full reload
-[iTickets]
-  Data integrity & validation: N - create record replacement instead of incremental data | N - create record replacement instead of incremental data
-  Data integrity & validation: N - create record replacement instead of incremental data | N - create record replacement instead of incremental data
-  Data integrity & validation: N - create record replacement instead of incremental data | N - create record replacement instead of incremental data
-  Data integrity & validation: N - create record replacement instead of incremental data | N - create record replacement instead of incremental data
-  Data integrity & validation: N - issue with refunded tickets. Refunds not being deducted because of current table structuring. Ja
-  Scheduled refreshes: N - refreshes weren't set up | N - data refreshes not pulling current data`;
+// HISTORY — stored as plain JS strings, no template literals
+var QA_PATTERNS = "Data integrity and validation (failed 9x across programs)\nWeb yes/no (failed 5x across programs)\nERP Create Date (failed 5x across programs)\nAll appropriate skus are sent (failed 4x across programs)\nUPC does not exist (failed 4x across programs)\nAll festool products (failed 4x across programs)\nLocation IDs (failed 4x across programs)\nScheduled run times (failed 3x across programs)\nshopify_status (failed 3x across programs)\nShopify_physical (failed 3x across programs)\nShop Loc Inventory (failed 3x across programs)\nSku set (failed 3x across programs)\nMiddlefield location inventory (failed 3x across programs)\nKit store location (failed 2x across programs)\nProduct Pricing (failed 2x across programs)";
 
-// === STATE ===
-let selProg=null, iterName='', selSpecs=[], updateDescVal='', affectedVal='';
-let generated={}, qaRounds=[], activeRound=0, qaResults={}, qaGenerated={};
-let progSpecs=[], currentIterKey=null;
-let githubSha=null; // sha of qa-data.json for updates
-let allIterations={}; // loaded from github
+var QA_HISTORY = "[Akeneo Appliance Feed]\n  All appropriate skus are sent: N - 51 discrepancies | N - 53 discrepancies, obsolete but feed not setting to archive\n  Scheduled run times: N - currently running at 1 and 1, change to 1am and 3pm | N - schedule not updated\n  shopify_status: N - 344 obsolete skus still active or draft | N - still 300+ skus as active or draft\n  shopify inventory tracked: N - feed is overriding value on subsequent sends\n  Web yes/no: N - feed not setting active appliances to web yes nor obsoletes to web no | N - 2000+ discrepancies\n  UPC does not exist: N - 309 discrepancies, some flipping each run | N - 17 discrepancies\n  Pricing: N - not updating obsoletes already in Akeneo\n  ERP Create Date: N - program not consistently identifying oldest insert date when multiple records exist | N - program trying to match on model over sku\n\n[Akeneo Product Feed]\n  All appropriate skus are sent: N - bug in join to datawarehouse table\n  Scheduled run times: N - left on disabled\n  Discontinued and Close out: N - feed not sending updates when Eagle values are null\n  Shopify_physical: N - SQL bug treating all comparisons as matches | N - still null\n  Shopify_Inventory_Tracked: N - program overrides current value\n  shopify_status: N - set shopify status back to draft\n  Web yes/no products: N - Amazon channel using wrong store IDs\n  Kit store location: N - location for ~4000 skus do not match | N - 3 discrepancies\n  Kit quantities: N - multiple issues\n  Product store location: N - 3299 discrepancies mostly on stores 12 and 18\n  UPC does not exist: N - sending null values | N - sending null values\n  Product Pricing: N - promo pricing sent in Amazon channel | N - 231 discrepancies\n\n[Festool Updates]\n  All festool products: N - need QOH > 0 logic for discontinued | N - pulling in non-Festool kits\n  No duplicate skus: N - kits pulled multiple times due to kit logic\n  Kit inventory: N - kit QOH duplicated due to join fanout\n\n[Kit Update Logic]\n  Eligible order validation: N - kit line items not falling off stored proc\n  Multiple line items for nonkits HH: N - program not ordering tracking numbers\n\n[Shop Shipping Feed]\n  Multiple line items HH: N - shipping info for one line item applied to all\n  Multiple shipments LEH: N - multiple shipments failing stored proc\n  Multiple line items LEH: N - LEH and HH operating differently, HH one record per order LEH multiple\n  Shopify site updated and logged LEH: N - program not built to submit to LEH channel\n\n[Shopify Inventory Updates]\n  Shopify open orders: N - open orders not added to hk quantities | N - shop pending needs removed from kit calculations\n\n[Shopify Homesource Inventory Updates]\n  Hartville location inventory: N - stock added to wrong location | N - bug surrounding open orders logic\n  Middlefield location inventory: N - stock added to wrong location | N - open orders being deducted incorrectly\n\n[Inventory Rewrite Shopify]\n  Sku validation: N - dropping Home Source skus\n  HH Store Quantity: N - not deducting Amazon pending\n  Shop Loc Inventory: N - deducting shopify pending in table function\n  MFLD Store Quantity: N - not deducting Amazon pending\n  Kitting: N - not applied to HH and MFLD feeds | N - component skus not linked to parent skus\n  Location IDs: N - LEH prod location used instead of sandbox | N - mapping table updated but case statement not\n\n[Inventory Rewrite CV3]\n  LEH Store Quantity: N - Amazon Pending deducted incorrectly\n  HH Store Quantity: N - Amazon Pending deducted incorrectly\n  Total LEH Inventory: N - Amazon Pending should only come out at total level\n  Total HH Inventory: N - Amazon Pending should only come out at total level\n\n[FBM Updates]\n  FBM to Eagle sku inventory feed: N - nulls on catalog alias table dropping 8 kit skus\n\n[QOH Update]\n  Sku set: N - 287 skus with mismatched quantities\n  QOH: N - 287 skus with mismatched quantities\n\n[Shopify Order Imports]\n  Case specific testing: N - shopify pending not updating consistently for quantities changed within first 30 mins\n  Kickout: N - program did not generate file for the order\n  Outbound file: N - Prop 65 joining to old table not maintained | N - logic only written to pick up abbreviation CA not California\n  Personalization Items: Fail - order import failed due to null sku for personalization line\n  Missing shipping address handling: N - billing address sends empty string and program not set up to handle, file to NO aborts\n\n[BOPIS Orders]\n  All orders import: N - import issue due to MF BOPIS category\n  Case specific testing: N - import issue due to MF BOPIS category\n  Program scheduled: N - schedule disabled";
+// STATE
+var selProg = null, iterName = '', selSpecs = [], updateDescVal = '', affVal = '';
+var generated = {}, qaRounds = [], activeRound = 0, qaResults = {}, qaGen = {};
+var progSpecs = [], curIterKey = null, ghSha = null, allIters = {};
 
-// === GITHUB API ===
-async function githubGet(){
-  try{
-    setSyncStatus('loading','syncing…');
-    const res=await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,{
-      headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json'}
+// GITHUB
+function setSyncStatus(state, lbl) {
+  var dot = document.getElementById('dot');
+  var sl = document.getElementById('syncLbl');
+  dot.className = 'dot' + (state === 'ok' ? ' ok' : state === 'err' ? ' err' : state === 'spin' ? ' spin' : '');
+  sl.textContent = lbl;
+}
+
+function ghGet() {
+  setSyncStatus('spin', 'syncing…');
+  return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
+    headers: {'Authorization': 'token ' + GH_TOKEN, 'Accept': 'application/vnd.github.v3+json'}
+  }).then(function(r) {
+    if (r.status === 404) { ghSha = null; allIters = {}; setSyncStatus('ok', 'connected'); return; }
+    return r.json().then(function(d) {
+      ghSha = d.sha;
+      var decoded = JSON.parse(atob(d.content.replace(/\n/g, '')));
+      allIters = decoded.iterations || {};
+      setSyncStatus('ok', 'connected');
     });
-    if(res.status===404){
-      githubSha=null;
-      allIterations={};
-      setSyncStatus('ok','connected');
-      return;
-    }
-    const data=await res.json();
-    githubSha=data.sha;
-    const decoded=JSON.parse(atob(data.content.replace(/
-/g,'')));
-    allIterations=decoded.iterations||{};
-    setSyncStatus('ok','connected');
-  }catch(e){
-    setSyncStatus('err','sync failed');
-  }
+  }).catch(function(e) { setSyncStatus('err', 'offline'); });
 }
 
-async function githubSave(){
-  try{
-    setSyncStatus('loading','saving…');
-    const payload={iterations:allIterations,lastUpdated:new Date().toISOString()};
-    const content=btoa(unescape(encodeURIComponent(JSON.stringify(payload,null,2))));
-    const body={message:`QA update: ${currentIterKey||'session'} — ${new Date().toLocaleString()}`,content};
-    if(githubSha)body.sha=githubSha;
-    const res=await fetch(`https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE}`,{
-      method:'PUT',
-      headers:{'Authorization':`token ${GITHUB_TOKEN}`,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
-      body:JSON.stringify(body)
-    });
-    const data=await res.json();
-    if(data.content){
-      githubSha=data.content.sha;
-      setSyncStatus('ok','saved');
-      showToast('Saved to GitHub.');
-    } else {
-      throw new Error(data.message||'Save failed');
-    }
-  }catch(e){
-    setSyncStatus('err','save failed');
-    showToast('Save failed: '+e.message);
-  }
+function ghSave() {
+  setSyncStatus('spin', 'saving…');
+  var payload = {iterations: allIters, lastUpdated: new Date().toISOString()};
+  var content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+  var body = {message: 'QA update: ' + (curIterKey || 'session') + ' ' + new Date().toLocaleString(), content: content};
+  if (ghSha) body.sha = ghSha;
+  return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
+    method: 'PUT',
+    headers: {'Authorization': 'token ' + GH_TOKEN, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.content) { ghSha = d.content.sha; setSyncStatus('ok', 'saved'); toast('Saved to GitHub.'); }
+    else { throw new Error(d.message || 'Save failed'); }
+  }).catch(function(e) { setSyncStatus('err', 'save failed'); toast('Save failed: ' + e.message); });
 }
 
-function setSyncStatus(state, label){
-  const dot=document.getElementById('syncDot');
-  const lbl=document.getElementById('syncLabel');
-  dot.className='sync-dot'+(state==='ok'?' ok':state==='err'?' err':state==='loading'?' loading':'');
-  lbl.textContent=label;
-}
-
-// === INIT ===
-function initSelect(){
-  const sel=document.getElementById('progSel');
-  Object.keys(QA_DATA).sort().forEach(k=>{
-    const o=document.createElement('option');
-    o.value=k;o.textContent=k;sel.appendChild(o);
+// INIT
+function initDropdown() {
+  var sel = document.getElementById('progSel');
+  Object.keys(PROGRAMS).sort().forEach(function(k) {
+    var o = document.createElement('option');
+    o.value = k; o.textContent = k;
+    sel.appendChild(o);
   });
 }
 
-async function init(){
-  initSelect();
-  await githubGet();
-  renderIterList();
+function init() {
+  initDropdown();
+  ghGet().then(function() { renderIterList(); });
 }
 
-function renderIterList(){
-  const loading=document.getElementById('iterLoading');
-  const list=document.getElementById('iterList');
-  loading.style.display='none';
-  list.style.display='block';
-  list.innerHTML='';
-  const keys=Object.keys(allIterations).sort((a,b)=>new Date(allIterations[b].savedAt||0)-new Date(allIterations[a].savedAt||0));
-  if(!keys.length){
-    list.innerHTML='<div style="font-size:13px;color:var(--text2);margin-bottom:16px">No saved iterations yet. Start one below.</div>';
+// ITER LIST
+function renderIterList() {
+  var loading = document.getElementById('iterLoading');
+  var list = document.getElementById('iterList');
+  if (loading) loading.style.display = 'none';
+  if (!list) return;
+  list.style.display = 'block';
+  list.innerHTML = '';
+  var keys = Object.keys(allIters).sort(function(a, b) {
+    return new Date(allIters[b].savedAt || 0) - new Date(allIters[a].savedAt || 0);
+  });
+  if (!keys.length) {
+    list.innerHTML = '<div style="font-size:13px;color:var(--text2);margin-bottom:16px">No saved iterations yet. Start one below.</div>';
     return;
   }
-  keys.forEach(key=>{
-    const iter=allIterations[key];
-    const rounds=iter.rounds||[];
-    const specs=iter.specs||[];
-    const lastRound=rounds[rounds.length-1]||'Round 1';
-    const passCount=specs.filter(s=>{
-      const v=(iter.results&&iter.results[s.name]||[])[rounds.length-1]||'';
-      return classify(v)==='pass';
+  keys.forEach(function(key) {
+    var it = allIters[key];
+    var rounds = it.rounds || [];
+    var specs = it.specs || [];
+    var passCount = specs.filter(function(s) {
+      var v = ((it.results || {})[s.n] || [])[rounds.length - 1] || '';
+      return classify(v) === 'pass';
     }).length;
-    const div=document.createElement('div');
-    div.className='iter-item';
-    div.innerHTML=`
-      <div>
-        <div class="iter-item-name">${esc(iter.iterName||key)}</div>
-        <div class="iter-item-meta">${esc(iter.program)} · ${rounds.length} round${rounds.length!==1?'s':''} · ${lastRound}: ${passCount}/${specs.length} passing · ${iter.savedAt?new Date(iter.savedAt).toLocaleDateString():''}</div>
-      </div>
-      <div class="iter-item-right">
-        <span class="pill ${passCount===specs.length&&specs.length>0?'pill-pass':'pill-fail'}">${passCount}/${specs.length} pass</span>
-        <button class="btn-sm" onclick="event.stopPropagation();deleteIter('${esc(key)}')">delete</button>
-      </div>
-    `;
-    div.onclick=()=>loadIter(key);
+    var div = document.createElement('div');
+    div.className = 'ii';
+    div.innerHTML = '<div><div class="ii-name">' + esc(it.iterName || key) + '</div>' +
+      '<div class="ii-meta">' + esc(it.program) + ' · ' + rounds.length + ' round(s) · ' +
+      passCount + '/' + specs.length + ' passing · ' +
+      (it.savedAt ? new Date(it.savedAt).toLocaleDateString() : '') + '</div></div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+      '<span class="pill ' + (passCount === specs.length && specs.length > 0 ? 'pp' : 'pf') + '">' + passCount + '/' + specs.length + ' pass</span>' +
+      '<button class="btn-sm" onclick="event.stopPropagation();delIter(\'' + esc(key) + '\')">delete</button></div>';
+    div.onclick = function() { loadIter(key); };
     list.appendChild(div);
   });
 }
 
-function loadIter(key){
-  const iter=allIterations[key];
-  if(!iter)return;
-  currentIterKey=key;
-  selProg=iter.program;
-  iterName=iter.iterName||key;
-  selSpecs=iter.specs||[];
-  qaRounds=iter.rounds||['Round 1'];
-  qaResults=iter.results||{};
-  qaGenerated=iter.generated||{};
-  generated={...qaGenerated};
-  updateDescVal=iter.updateDesc||'';
-  activeRound=qaRounds.length-1;
-  document.getElementById('qaTitle').textContent=iterName;
-  document.getElementById('qaProgLabel').textContent=selProg;
+function loadIter(key) {
+  var it = allIters[key];
+  if (!it) return;
+  curIterKey = key;
+  selProg = it.program;
+  iterName = it.iterName || key;
+  selSpecs = it.specs || [];
+  qaRounds = it.rounds || ['Round 1'];
+  qaResults = it.results || {};
+  qaGen = it.generated || {};
+  generated = Object.assign({}, qaGen);
+  updateDescVal = it.updateDesc || '';
+  activeRound = qaRounds.length - 1;
+  document.getElementById('qaTitle').textContent = iterName;
+  document.getElementById('qaProg').textContent = selProg;
   renderQA();
   goTo('s5');
-  showToast('Iteration loaded.');
+  toast('Iteration loaded.');
 }
 
-function deleteIter(key){
-  if(!confirm('Delete this iteration? This cannot be undone.'))return;
-  delete allIterations[key];
-  githubSave();
-  renderIterList();
+function delIter(key) {
+  if (!confirm('Delete this iteration?')) return;
+  delete allIters[key];
+  ghSave().then(function() { renderIterList(); });
 }
 
-// === NAVIGATION ===
-function goTo(id){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+// NAV
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
-  window.scrollTo(0,0);
+  window.scrollTo(0, 0);
 }
 
-function onProgChange(){
-  selProg=document.getElementById('progSel').value||null;
-  if(selProg)document.getElementById('iterName').placeholder=`${selProg} — New Iteration`;
+function onProgChange() {
+  selProg = document.getElementById('progSel').value || null;
+  if (selProg) document.getElementById('iterName').placeholder = selProg + ' — New Iteration';
 }
 
-function goToSpecs(){
-  if(!selProg){showToast('Please select a program first.');return;}
-  iterName=document.getElementById('iterName').value.trim()||`${selProg} — New Iteration`;
-  progSpecs=QA_DATA[selProg].specs.map(s=>({...s,isNew:false}));
-  const list=document.getElementById('specChecklist');
-  list.innerHTML='';
-  progSpecs.forEach((spec,i)=>renderSpecItem(list,spec,i,true));
+function goToSpecs() {
+  if (!selProg) { toast('Please select a program first.'); return; }
+  iterName = document.getElementById('iterName').value.trim() || selProg + ' — New Iteration';
+  progSpecs = (PROGRAMS[selProg] || []).map(function(s) { return {n: s.n, d: s.d, isNew: false}; });
+  var list = document.getElementById('specList');
+  list.innerHTML = '';
+  progSpecs.forEach(function(spec, i) { renderSpecItem(list, spec, i, true); });
   goTo('s2');
 }
 
-function renderSpecItem(container,spec,idx,checked){
-  const div=document.createElement('div');
-  div.className='spec-item'+(checked?' selected':'');
-  div.dataset.idx=idx;
-  div.onclick=(e)=>{if(e.target.tagName!=='INPUT')toggleSpecItem(div);};
-  div.innerHTML=`<input type="checkbox" ${checked?'checked':''} data-idx="${idx}" onclick="toggleSpecItem(this.closest('.spec-item'))" />
-    <div class="spec-item-body">
-      <div class="spec-item-name">${esc(spec.name)}${spec.isNew?' <span class="pill pill-new">new</span>':''}</div>
-      <div class="spec-item-desc">${esc(spec.description)}</div>
-    </div>`;
+function renderSpecItem(container, spec, idx, checked) {
+  var div = document.createElement('div');
+  div.className = 'si' + (checked ? ' on' : '');
+  div.dataset.idx = idx;
+  div.onclick = function(e) { if (e.target.tagName !== 'INPUT') toggleSI(div); };
+  div.innerHTML = '<input type="checkbox" ' + (checked ? 'checked' : '') + ' data-idx="' + idx + '" onclick="toggleSI(this.closest(\'.si\'))" />' +
+    '<div><div class="si-name">' + esc(spec.n) + (spec.isNew ? ' <span class="pill pnew">new</span>' : '') + '</div>' +
+    '<div class="si-desc">' + esc(spec.d) + '</div></div>';
   container.appendChild(div);
 }
 
-function toggleSpecItem(div){
-  const cb=div.querySelector('input');
-  cb.checked=!cb.checked;
-  div.classList.toggle('selected',cb.checked);
+function toggleSI(div) {
+  var cb = div.querySelector('input');
+  cb.checked = !cb.checked;
+  div.classList.toggle('on', cb.checked);
 }
 
-function selectAll(val){
-  document.querySelectorAll('#specChecklist .spec-item').forEach(div=>{
-    div.querySelector('input').checked=val;
-    div.classList.toggle('selected',val);
+function selAll(val) {
+  document.querySelectorAll('#specList .si').forEach(function(div) {
+    div.querySelector('input').checked = val;
+    div.classList.toggle('on', val);
   });
 }
 
-function addNewSpec(){
-  const name=document.getElementById('newSpecName').value.trim();
-  const desc=document.getElementById('newSpecDesc').value.trim();
-  if(!name){showToast('Enter a spec name first.');return;}
-  const newSpec={name,description:desc,isNew:true};
-  progSpecs.push(newSpec);
-  renderSpecItem(document.getElementById('specChecklist'),newSpec,progSpecs.length-1,true);
-  document.getElementById('newSpecName').value='';
-  document.getElementById('newSpecDesc').value='';
-  showToast('Spec added.');
+function addSpec() {
+  var name = document.getElementById('newName').value.trim();
+  var desc = document.getElementById('newDesc').value.trim();
+  if (!name) { toast('Enter a spec name first.'); return; }
+  var spec = {n: name, d: desc, isNew: true};
+  progSpecs.push(spec);
+  renderSpecItem(document.getElementById('specList'), spec, progSpecs.length - 1, true);
+  document.getElementById('newName').value = '';
+  document.getElementById('newDesc').value = '';
+  toast('Spec added.');
 }
 
-function goToUpdate(){
-  selSpecs=[];
-  document.querySelectorAll('#specChecklist .spec-item input:checked').forEach(cb=>{
+function goToUpdate() {
+  selSpecs = [];
+  document.querySelectorAll('#specList .si input:checked').forEach(function(cb) {
     selSpecs.push(progSpecs[parseInt(cb.dataset.idx)]);
   });
-  if(!selSpecs.length){showToast('Select at least one spec.');return;}
+  if (!selSpecs.length) { toast('Select at least one spec.'); return; }
   goTo('s3');
 }
 
-// === SCENARIO GENERATION ===
-function generateScenarios(){
-  updateDescVal=document.getElementById('updateDesc').value.trim();
-  affectedVal=document.getElementById('affectedSpecs').value.trim();
-  const errEl=document.getElementById('genErr');
+// PROMPT GENERATION
+function generatePrompt() {
+  updateDescVal = document.getElementById('updateDesc').value.trim();
+  affVal = document.getElementById('affSpecs').value.trim();
+  var errEl = document.getElementById('genErr');
   errEl.classList.remove('show');
-  if(!updateDescVal){errEl.textContent='Please describe the update first.';errEl.classList.add('show');return;}
+  if (!updateDescVal) { errEl.textContent = 'Please describe the update first.'; errEl.classList.add('show'); return; }
 
-  const specList=selSpecs.map(s=>`- ${s.name}: ${s.description}`).join('\n');
+  var specList = selSpecs.map(function(s) { return '- ' + s.n + ': ' + s.d; }).join('\n');
 
-  // Include prior results context from saved iterations for this program
-  const priorIters=Object.values(allIterations)
-    .filter(it=>it.program===selProg)
-    .sort((a,b)=>new Date(a.savedAt||0)-new Date(b.savedAt||0));
-
-  let priorContext='';
-  if(priorIters.length>0){
-    priorContext='\n\nPrior iteration results for this program:\n';
-    priorIters.forEach(it=>{
-      priorContext+=`\n${it.iterName}:\n`;
-      (it.specs||[]).forEach(s=>{
-        const results=(it.results||{})[s.name]||[];
-        const summary=results.map((v,i)=>`${it.rounds[i]||'R'+(i+1)}: ${v||'—'}`).join(' | ');
-        if(summary) priorContext+=`  ${s.name}: ${summary}\n`;
+  var priorCtx = '';
+  var priorIters = Object.values(allIters).filter(function(it) { return it.program === selProg; });
+  if (priorIters.length > 0) {
+    priorCtx = '\n\nPrior iteration results for this program:\n';
+    priorIters.forEach(function(it) {
+      priorCtx += '\n' + it.iterName + ':\n';
+      (it.specs || []).forEach(function(s) {
+        var results = ((it.results || {})[s.n] || []);
+        var summary = results.map(function(v, i) { return (it.rounds[i] || 'R' + (i+1)) + ': ' + (v || '—'); }).join(' | ');
+        if (summary) priorCtx += '  ' + s.n + ': ' + summary + '\n';
       });
     });
   }
 
-  const prompt=`You are a QA engineer writing test scenarios and SQL validation queries for a C#/.NET integration program that syncs data between Eagle ERP (sqleagle.hh.view_in_clone), Natural Order (titan.live.dbo.*, titan.testing.dbo.*), and Akeneo/Shopify/Amazon/CV3 channels. Kitting logic uses titan.live.dbo.kitting (sku, component_sku, component_quantity). Inventory uses product_warehouse (sku, warehouse_code, product_total_quantity, product_reserve_quantity). Amazon pending in titan.integration.dbo.amazonpending (QuantityOrdered). Shopify variants in Integration.INV.ShopifyVariants.
+  var prompt = 'You are a QA engineer writing test scenarios and SQL validation queries for a C#/.NET integration program that syncs data between Eagle ERP (sqleagle.hh.view_in_clone), Natural Order (titan.live.dbo.*, titan.testing.dbo.*), and Akeneo/Shopify/Amazon/CV3 channels. Kitting logic uses titan.live.dbo.kitting (sku, component_sku, component_quantity). Inventory uses product_warehouse (sku, warehouse_code, product_total_quantity, product_reserve_quantity). Amazon pending in titan.integration.dbo.amazonpending (QuantityOrdered). Shopify variants in Integration.INV.ShopifyVariants.\n\n' +
+    'Program: ' + selProg + '\n' +
+    'Update: ' + updateDescVal + '\n' +
+    (affVal ? 'Directly affected specs: ' + affVal + '\n' : '') +
+    priorCtx + '\n\n' +
+    'Specs to test:\n' + specList + '\n\n' +
+    '=== HISTORICAL QA FAILURE PATTERNS ===\n' +
+    'Use these to write regression test cases and targeted edge case SQL.\n\n' +
+    'RECURRING FAILURES BY SPEC NAME:\n' + QA_PATTERNS + '\n\n' +
+    'FULL FAILURE HISTORY BY PROGRAM:\n' + QA_HISTORY + '\n\n' +
+    '=== INSTRUCTIONS ===\n' +
+    'For EACH spec write:\n' +
+    '1. scenario: 3-4 sentences covering what to test, expected result, and edge cases drawn from the historical failures above.\n' +
+    '2. sql: Practical T-SQL using #tmp temp tables. DROP TABLE IF EXISTS #tmp; SELECT ... INTO #tmp pattern. Include regression checks where the spec has a known failure history.\n' +
+    '3. regression: One sentence on what specifically to watch for based on prior failure history.\n\n' +
+    'Return ONLY valid JSON, no markdown, no preamble:\n' +
+    '{"specs":[{"name":"exact spec name","scenario":"...","sql":"...","regression":"..."}]}';
 
-Program: ${selProg}
-Update: ${updateDescVal}
-${affectedVal?'Directly affected specs: '+affectedVal:''}
-${priorContext}
-
-Specs to test:
-${specList}
-
-=== HISTORICAL QA FAILURE PATTERNS (from all programs in repository) ===
-Use these to write regression test cases and targeted edge case SQL. These are real failures from prior QA rounds.
-
-RECURRING FAILURES BY SPEC NAME:
-${QA_HISTORY_PATTERNS}
-
-FULL FAILURE HISTORY BY PROGRAM:
-${QA_HISTORY_FULL}
-
-=== INSTRUCTIONS ===
-For EACH spec write:
-1. scenario: 3-4 sentences — what to test, expected result, and specific edge cases drawn from the historical failures above. Call out any historical failure pattern directly relevant to this spec.
-2. sql: Practical T-SQL using #tmp temp tables. Compare expected vs actual. Use DROP TABLE IF EXISTS #tmp; SELECT ... INTO #tmp pattern. Include regression checks where the spec has a known failure history. Show discrepancies in final SELECT.
-3. regression: One sentence on what specifically to watch for based on prior failure history.
-
-Return ONLY valid JSON, no markdown, no preamble:
-{"specs":[{"name":"exact spec name","scenario":"...","sql":"...","regression":"..."}]}`;
-
-  navigator.clipboard.writeText(prompt).catch(()=>{});
-  showPromptModal(prompt);
+  navigator.clipboard.writeText(prompt).catch(function() {});
+  showModal(prompt);
 }
 
-function showPromptModal(prompt){
-  let modal=document.getElementById('promptModal');
-  if(modal)modal.remove();
-  modal=document.createElement('div');
-  modal.id='promptModal';
-  modal.className='modal-overlay';
-  modal.innerHTML=`
-    <div class="modal">
-      <h3 style="margin-bottom:8px">Step 1 — Paste this prompt into Claude</h3>
-      <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">The prompt has been copied to your clipboard. Paste it into your Claude chat and copy the full JSON response.</p>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-family:var(--mono);font-size:11px;line-height:1.6;max-height:160px;overflow-y:auto;white-space:pre-wrap;margin-bottom:10px" id="promptPreview"></div>
-      <button onclick="navigator.clipboard.writeText(document.getElementById('promptPreview').textContent).then(()=>showToast('Copied!'))" style="font-size:12px;padding:4px 12px;margin-bottom:16px">📋 Copy again</button>
-      <h3 style="margin-bottom:8px">Step 2 — Paste Claude's response here</h3>
-      <p style="font-size:12px;color:var(--text2);margin-bottom:8px">Paste the full JSON response from Claude below, then click Import.</p>
-      <textarea id="responseInput" rows="6" style="font-family:var(--mono);font-size:11px;margin-bottom:10px" placeholder='{"specs":[{"name":"...","scenario":"...","sql":"...","regression":"..."}]}'></textarea>
-      <div class="err" id="modalErr"></div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <button onclick="closeModal()">Cancel</button>
-        <button class="btn-primary" onclick="importResponse()">Import scenarios →</button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-  document.getElementById('promptPreview').textContent=prompt;
+function showModal(prompt) {
+  var old = document.getElementById('promptModal');
+  if (old) old.remove();
+  var mo = document.createElement('div');
+  mo.id = 'promptModal';
+  mo.className = 'mo';
+  mo.innerHTML = '<div class="md">' +
+    '<h3 style="margin-bottom:8px">Step 1 — Paste this prompt into Claude</h3>' +
+    '<p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">The prompt has been copied to your clipboard. Paste it into your Claude chat and copy the full JSON response.</p>' +
+    '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-family:var(--mono);font-size:11px;line-height:1.6;max-height:160px;overflow-y:auto;white-space:pre-wrap;margin-bottom:10px" id="promptPreview"></div>' +
+    '<button onclick="navigator.clipboard.writeText(document.getElementById(\'promptPreview\').textContent).then(function(){toast(\'Copied!\')})" style="font-size:12px;padding:4px 12px;margin-bottom:16px">Copy again</button>' +
+    '<h3 style="margin-bottom:8px">Step 2 — Paste Claude\'s response here</h3>' +
+    '<p style="font-size:12px;color:var(--text2);margin-bottom:8px">Paste the full JSON response from Claude, then click Import.</p>' +
+    '<textarea id="responseInput" rows="6" style="font-family:var(--mono);font-size:11px;margin-bottom:10px" placeholder=\'{"specs":[{"name":"...","scenario":"...","sql":"...","regression":"..."}]}\'></textarea>' +
+    '<div class="err" id="modalErr"></div>' +
+    '<div style="display:flex;gap:8px;margin-top:12px">' +
+    '<button onclick="closeModal()">Cancel</button>' +
+    '<button class="btn-p" onclick="importResp()">Import scenarios</button></div></div>';
+  document.body.appendChild(mo);
+  document.getElementById('promptPreview').textContent = prompt;
 }
 
-function closeModal(){
-  const modal=document.getElementById('promptModal');
-  if(modal)modal.remove();
+function closeModal() {
+  var mo = document.getElementById('promptModal');
+  if (mo) mo.remove();
 }
 
-function importResponse(){
-  const raw=document.getElementById('responseInput').value.trim();
-  const errEl=document.getElementById('modalErr');
+function importResp() {
+  var raw = document.getElementById('responseInput').value.trim();
+  var errEl = document.getElementById('modalErr');
   errEl.classList.remove('show');
-  try{
-    const clean=raw.replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(clean);
-    if(!parsed.specs)throw new Error('Invalid format — expected {"specs":[...]}');
-    generated={};
-    parsed.specs.forEach(s=>{generated[s.name]=s;});
+  try {
+    var clean = raw.replace(/```json|```/g, '').trim();
+    var parsed = JSON.parse(clean);
+    if (!parsed.specs) throw new Error('Invalid format — expected {"specs":[...]}');
+    generated = {};
+    parsed.specs.forEach(function(s) { generated[s.name] = s; });
     closeModal();
     renderScenarios();
     goTo('s4');
-    showToast('Scenarios imported.');
-  }catch(e){
-    errEl.textContent='Import failed: '+e.message;
+    toast('Scenarios imported.');
+  } catch(e) {
+    errEl.textContent = 'Import failed: ' + e.message;
     errEl.classList.add('show');
   }
 }
 
-function renderScenarios(){
-  const list=document.getElementById('scenarioList');
-  list.innerHTML='';
-  selSpecs.forEach(spec=>{
-    const gen=generated[spec.name]||{};
-    const card=document.createElement('div');
-    card.className='card';
-    card.style.marginBottom='12px';
-    card.innerHTML=`
-      <div style="font-size:13px;font-weight:600;margin-bottom:10px">${esc(spec.name)}${spec.isNew?' <span class="pill pill-new">new</span>':''}</div>
-      <div class="ai-label">Test scenario</div>
-      <textarea rows="3" style="font-size:12px;margin-bottom:10px" data-spec="${esc(spec.name)}" data-type="scenario">${esc(gen.scenario||'')}</textarea>
-      <div class="ai-label">Validation SQL</div>
-      <textarea rows="7" style="font-family:var(--mono);font-size:11px;margin-bottom:10px" data-spec="${esc(spec.name)}" data-type="sql">${esc(gen.sql||'')}</textarea>
-      <div class="ai-label">Regression watch</div>
-      <textarea rows="2" style="font-size:12px" data-spec="${esc(spec.name)}" data-type="regression">${esc(gen.regression||'')}</textarea>
-    `;
+function renderScenarios() {
+  var list = document.getElementById('scenList');
+  list.innerHTML = '';
+  selSpecs.forEach(function(spec) {
+    var gen = generated[spec.n] || {};
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.style.marginBottom = '12px';
+    card.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:10px">' + esc(spec.n) + (spec.isNew ? ' <span class="pill pnew">new</span>' : '') + '</div>' +
+      '<div class="ai-lbl">Test scenario</div>' +
+      '<textarea rows="3" style="font-size:12px;margin-bottom:10px" data-spec="' + esc(spec.n) + '" data-type="scenario">' + esc(gen.scenario || '') + '</textarea>' +
+      '<div class="ai-lbl">Validation SQL</div>' +
+      '<textarea rows="7" style="font-family:var(--mono);font-size:11px;margin-bottom:10px" data-spec="' + esc(spec.n) + '" data-type="sql">' + esc(gen.sql || '') + '</textarea>' +
+      '<div class="ai-lbl">Regression watch</div>' +
+      '<textarea rows="2" style="font-size:12px" data-spec="' + esc(spec.n) + '" data-type="regression">' + esc(gen.regression || '') + '</textarea>';
     list.appendChild(card);
   });
 }
 
-function startQA(){
-  document.querySelectorAll('#scenarioList textarea').forEach(ta=>{
-    const sn=ta.dataset.spec,type=ta.dataset.type;
-    if(!generated[sn])generated[sn]={};
-    generated[sn][type]=ta.value;
+function startQA() {
+  document.querySelectorAll('#scenList textarea').forEach(function(ta) {
+    var sn = ta.dataset.spec, type = ta.dataset.type;
+    if (!generated[sn]) generated[sn] = {};
+    generated[sn][type] = ta.value;
   });
-  qaGenerated={...generated};
-  qaRounds=['Round 1'];
-  activeRound=0;
-  qaResults={};
-  selSpecs.forEach(s=>{qaResults[s.name]=[''];});
-  currentIterKey=`${selProg}_${Date.now()}`;
-  document.getElementById('qaTitle').textContent=iterName;
-  document.getElementById('qaProgLabel').textContent=selProg;
+  qaGen = Object.assign({}, generated);
+  qaRounds = ['Round 1'];
+  activeRound = 0;
+  qaResults = {};
+  selSpecs.forEach(function(s) { qaResults[s.n] = ['']; });
+  curIterKey = selProg + '_' + Date.now();
+  document.getElementById('qaTitle').textContent = iterName;
+  document.getElementById('qaProg').textContent = selProg;
   renderQA();
   goTo('s5');
   autoSave();
 }
 
-// === QA SCREEN ===
-function renderQA(){renderTabs();renderSpecsForRound();renderSummary();}
+// QA
+function renderQA() { renderTabs(); renderSpecs(); renderSummary(); }
 
-function renderTabs(){
-  const tabs=document.getElementById('roundTabs');
-  tabs.innerHTML='';
-  qaRounds.forEach((r,i)=>{
-    const t=document.createElement('div');
-    t.className='tab'+(i===activeRound?' active':'');
-    t.textContent=r;
-    t.onclick=()=>{activeRound=i;renderQA();};
+function renderTabs() {
+  var tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  qaRounds.forEach(function(r, i) {
+    var t = document.createElement('div');
+    t.className = 'tab' + (i === activeRound ? ' on' : '');
+    t.textContent = r;
+    t.onclick = function() { activeRound = i; renderQA(); };
     tabs.appendChild(t);
   });
 }
 
-function renderSpecsForRound(){
-  const list=document.getElementById('qaSpecList');
-  list.innerHTML='';
-  selSpecs.forEach(spec=>{
-    const curVal=(qaResults[spec.name]||[])[activeRound]||'';
-    const status=classify(curVal);
-    const gen=qaGenerated[spec.name]||{};
-    const card=document.createElement('div');
-    card.className='qa-card';
-    const cid=cssId(spec.name)+'_'+activeRound;
-    card.innerHTML=`
-      <div class="qa-card-header" onclick="toggleBody('${cid}')">
-        <div style="flex:1">
-          <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">
-            ${esc(spec.name)}${spec.isNew?' <span class="pill pill-new">new</span>':''}
-          </div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(spec.description)}</div>
-        </div>
-        <span class="pill ${pillCls(status)}">${pillLbl(status)}</span>
-      </div>
-      <div class="qa-card-body" id="body-${cid}">
-        <div class="pf-row">
-          <span class="pf-label">Result</span>
-          <div class="pf-btns" id="btns-${cid}">
-            <button class="pf-btn${status==='pass'?' p':''}" onclick="setResult('${esc(spec.name)}','Y',this,'${cid}')">Pass</button>
-            <button class="pf-btn${status==='fail'?' f':''}" onclick="setResult('${esc(spec.name)}','N',this,'${cid}')">Fail</button>
-            <button class="pf-btn${status==='na'?' n':''}" onclick="setResult('${esc(spec.name)}','N/A',this,'${cid}')">N/A</button>
-          </div>
-          <input class="note-input" placeholder="Add note…" value="${esc(getNoteText(curVal))}" onchange="updateNote('${esc(spec.name)}',this.value)" />
-        </div>
-        ${gen.scenario?`<div class="ai-label">Test scenario</div><div class="ai-block">${esc(gen.scenario)}</div>`:''}
-        ${gen.sql?`<div class="ai-label" style="margin-top:12px">Validation SQL</div><div class="sql-block">${esc(gen.sql)}</div>`:''}
-        ${gen.regression?`<div class="ai-label" style="margin-top:12px;color:var(--fail-text)">Regression watch</div><div class="ai-block" style="border-color:var(--fail-border)">${esc(gen.regression)}</div>`:''}
-      </div>
-    `;
+function renderSpecs() {
+  var list = document.getElementById('qaList');
+  list.innerHTML = '';
+  selSpecs.forEach(function(spec) {
+    var curVal = ((qaResults[spec.n] || [])[activeRound]) || '';
+    var status = classify(curVal);
+    var gen = qaGen[spec.n] || {};
+    var card = document.createElement('div');
+    card.className = 'qc';
+    var cid = cssId(spec.n) + '_' + activeRound;
+    card.innerHTML = '<div class="qch" onclick="toggleBody(\'' + cid + '\')">' +
+      '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + esc(spec.n) + (spec.isNew ? ' <span class="pill pnew">new</span>' : '') + '</div>' +
+      '<div style="font-size:12px;color:var(--text2);margin-top:2px">' + esc(spec.d) + '</div></div>' +
+      '<span class="pill ' + pillCls(status) + '">' + pillLbl(status) + '</span></div>' +
+      '<div class="qcb" id="body-' + cid + '">' +
+      '<div class="pfrow"><span class="pflbl">Result</span>' +
+      '<div class="pfbtns" id="btns-' + cid + '">' +
+      '<button class="pfb' + (status === 'pass' ? ' p' : '') + '" onclick="setResult(\'' + esc(spec.n) + '\',\'Y\',this,\'' + cid + '\')">Pass</button>' +
+      '<button class="pfb' + (status === 'fail' ? ' f' : '') + '" onclick="setResult(\'' + esc(spec.n) + '\',\'N\',this,\'' + cid + '\')">Fail</button>' +
+      '<button class="pfb' + (status === 'na' ? ' n' : '') + '" onclick="setResult(\'' + esc(spec.n) + '\',\'N/A\',this,\'' + cid + '\')">N/A</button></div>' +
+      '<input class="ni" placeholder="Add note…" value="' + esc(getNoteText(curVal)) + '" onchange="updateNote(\'' + esc(spec.n) + '\',this.value)" /></div>' +
+      (gen.scenario ? '<div class="ai-lbl">Test scenario</div><div class="ai-box">' + esc(gen.scenario) + '</div>' : '') +
+      (gen.sql ? '<div class="ai-lbl" style="margin-top:12px">Validation SQL</div><div class="sql-box">' + esc(gen.sql) + '</div>' : '') +
+      (gen.regression ? '<div class="ai-lbl" style="margin-top:12px;color:var(--fail-t)">Regression watch</div><div class="reg-box">' + esc(gen.regression) + '</div>' : '') +
+      '</div>';
     list.appendChild(card);
   });
 }
 
-function toggleBody(cid){
-  const el=document.getElementById('body-'+cid);
-  if(el)el.classList.toggle('open');
+function toggleBody(cid) {
+  var el = document.getElementById('body-' + cid);
+  if (el) el.classList.toggle('open');
 }
 
-function setResult(specName,val,btn,cid){
-  if(!qaResults[specName])qaResults[specName]=Array(qaRounds.length).fill('');
-  const noteEl=btn.closest('.pf-row').querySelector('.note-input');
-  const note=noteEl?noteEl.value.trim():'';
-  qaResults[specName][activeRound]=note?`${val} - ${note}`:val;
-  const btns=document.getElementById('btns-'+cid);
-  if(btns)btns.querySelectorAll('.pf-btn').forEach(b=>b.className='pf-btn');
-  btn.className='pf-btn '+(val==='Y'?'p':val==='N'?'f':'n');
-  const header=btn.closest('.qa-card').querySelector('.qa-card-header .pill');
-  if(header){const c=classify(qaResults[specName][activeRound]);header.className=`pill ${pillCls(c)}`;header.textContent=pillLbl(c);}
+function setResult(specName, val, btn, cid) {
+  if (!qaResults[specName]) qaResults[specName] = Array(qaRounds.length).fill('');
+  var noteEl = btn.closest('.pfrow').querySelector('.ni');
+  var note = noteEl ? noteEl.value.trim() : '';
+  qaResults[specName][activeRound] = note ? val + ' - ' + note : val;
+  var btns = document.getElementById('btns-' + cid);
+  if (btns) btns.querySelectorAll('.pfb').forEach(function(b) { b.className = 'pfb'; });
+  btn.className = 'pfb ' + (val === 'Y' ? 'p' : val === 'N' ? 'f' : 'n');
+  var header = btn.closest('.qc').querySelector('.qch .pill');
+  if (header) { var c = classify(qaResults[specName][activeRound]); header.className = 'pill ' + pillCls(c); header.textContent = pillLbl(c); }
   renderSummary();
 }
 
-function updateNote(specName,note){
-  const cur=(qaResults[specName]||[])[activeRound]||'';
-  const base=classify(cur);
-  const prefix=base==='pass'?'Y':base==='fail'?'N':base==='na'?'N/A':'';
-  if(prefix)qaResults[specName][activeRound]=note?`${prefix} - ${note}`:prefix;
+function updateNote(specName, note) {
+  var cur = ((qaResults[specName] || [])[activeRound]) || '';
+  var base = classify(cur);
+  var prefix = base === 'pass' ? 'Y' : base === 'fail' ? 'N' : base === 'na' ? 'N/A' : '';
+  if (prefix) qaResults[specName][activeRound] = note ? prefix + ' - ' + note : prefix;
 }
 
-function getNoteText(val){
-  if(!val)return'';
-  return val.replace(/^N\/A\s*[-–]\s*/i,'').replace(/^[YN]\s*[-–]\s*/i,'');
+function getNoteText(val) {
+  if (!val) return '';
+  return val.replace(/^N\/A\s*[-]\s*/i, '').replace(/^[YN]\s*[-]\s*/i, '');
 }
 
-function renderSummary(){
-  let pass=0,fail=0,na=0,empty=0;
-  selSpecs.forEach(s=>{
-    const c=classify((qaResults[s.name]||[])[activeRound]||'');
-    if(c==='pass')pass++;else if(c==='fail')fail++;else if(c==='na')na++;else empty++;
+function renderSummary() {
+  var pass = 0, fail = 0, na = 0, empty = 0;
+  selSpecs.forEach(function(s) {
+    var c = classify(((qaResults[s.n] || [])[activeRound]) || '');
+    if (c === 'pass') pass++; else if (c === 'fail') fail++; else if (c === 'na') na++; else empty++;
   });
-  document.getElementById('summaryGrid').innerHTML=`
-    <div class="scard"><div class="scard-label">Total specs</div><div class="scard-val">${selSpecs.length}</div></div>
-    <div class="scard"><div class="scard-label">Pass</div><div class="scard-val" style="color:var(--pass-text)">${pass}</div></div>
-    <div class="scard"><div class="scard-label">Fail</div><div class="scard-val" style="color:var(--fail-text)">${fail}</div></div>
-    <div class="scard"><div class="scard-label">Not entered</div><div class="scard-val" style="color:var(--text3)">${empty}</div></div>
-  `;
+  document.getElementById('summary').innerHTML =
+    '<div class="sc"><div class="sc-lbl">Total specs</div><div class="sc-val">' + selSpecs.length + '</div></div>' +
+    '<div class="sc"><div class="sc-lbl">Pass</div><div class="sc-val" style="color:var(--pass-t)">' + pass + '</div></div>' +
+    '<div class="sc"><div class="sc-lbl">Fail</div><div class="sc-val" style="color:var(--fail-t)">' + fail + '</div></div>' +
+    '<div class="sc"><div class="sc-lbl">Not entered</div><div class="sc-val" style="color:var(--text3)">' + empty + '</div></div>';
 }
 
-function addRound(){
-  qaRounds.push(`Round ${qaRounds.length+1}`);
-  selSpecs.forEach(s=>{if(!qaResults[s.name])qaResults[s.name]=[];qaResults[s.name].push('');});
-  activeRound=qaRounds.length-1;
+function addRound() {
+  qaRounds.push('Round ' + (qaRounds.length + 1));
+  selSpecs.forEach(function(s) { if (!qaResults[s.n]) qaResults[s.n] = []; qaResults[s.n].push(''); });
+  activeRound = qaRounds.length - 1;
   renderQA();
   autoSave();
-  showToast(`${qaRounds[activeRound]} added.`);
+  toast(qaRounds[activeRound] + ' added.');
 }
 
-function addSpecMidQA(){
-  const name=prompt('New spec name:');
-  if(!name)return;
-  const desc=prompt('Brief description:')||'';
-  const newSpec={name,description:desc,isNew:true};
-  selSpecs.push(newSpec);
-  qaResults[name]=Array(qaRounds.length).fill('');
-  qaGenerated[name]={scenario:'',sql:'',regression:''};
+function addSpecMid() {
+  var name = prompt('New spec name:');
+  if (!name) return;
+  var desc = prompt('Brief description:') || '';
+  var spec = {n: name, d: desc, isNew: true};
+  selSpecs.push(spec);
+  qaResults[name] = Array(qaRounds.length).fill('');
+  qaGen[name] = {scenario: '', sql: '', regression: ''};
   renderQA();
-  showToast('Spec added.');
+  toast('Spec added.');
 }
 
-function copyRound(){
-  const lines=[`${iterName} — ${qaRounds[activeRound]} Results`,`Program: ${selProg}`,`Update: ${updateDescVal}`,``];
-  selSpecs.forEach(s=>{
-    const v=(qaResults[s.name]||[])[activeRound]||'(not entered)';
-    lines.push(`• ${s.name}: ${v}`);
+function copyRound() {
+  var lines = [iterName + ' — ' + qaRounds[activeRound] + ' Results', 'Program: ' + selProg, 'Update: ' + updateDescVal, ''];
+  selSpecs.forEach(function(s) {
+    var v = ((qaResults[s.n] || [])[activeRound]) || '(not entered)';
+    lines.push('• ' + s.n + ': ' + v);
   });
-  navigator.clipboard.writeText(lines.join('\n'))
-    .then(()=>showToast('Round results copied to clipboard.'))
-    .catch(()=>showToast('Copy failed.'));
+  navigator.clipboard.writeText(lines.join('\n')).then(function() { toast('Round results copied.'); }).catch(function() { toast('Copy failed.'); });
 }
 
-// === GITHUB SAVE ===
-function buildIterPayload(){
-  return {
-    program:selProg,
-    iterName,
-    updateDesc:updateDescVal,
-    specs:selSpecs,
-    rounds:qaRounds,
-    results:qaResults,
-    generated:qaGenerated,
-    savedAt:new Date().toISOString()
-  };
+function buildPayload() {
+  return {program: selProg, iterName: iterName, updateDesc: updateDescVal, specs: selSpecs, rounds: qaRounds, results: qaResults, generated: qaGen, savedAt: new Date().toISOString()};
 }
 
-async function saveToGitHub(){
-  allIterations[currentIterKey]=buildIterPayload();
-  await githubSave();
-  renderIterList();
+function saveNow() {
+  allIters[curIterKey] = buildPayload();
+  ghSave().then(function() { renderIterList(); });
 }
 
-async function autoSave(){
-  allIterations[currentIterKey]=buildIterPayload();
-  await githubSave();
+function autoSave() {
+  allIters[curIterKey] = buildPayload();
+  ghSave();
 }
 
-// === UTILS ===
-function classify(val){
-  if(!val||!val.trim())return'empty';
-  const v=val.trim().toUpperCase();
-  if(v==='Y'||v.startsWith('Y -')||v==='YES')return'pass';
-  if(v.startsWith('N/A'))return'na';
-  if(v==='N'||v.startsWith('N -')||v==='NO')return'fail';
-  return'pass';
+// UTILS
+function classify(val) {
+  if (!val || !val.trim()) return 'empty';
+  var v = val.trim().toUpperCase();
+  if (v === 'Y' || v.indexOf('Y -') === 0 || v === 'YES') return 'pass';
+  if (v.indexOf('N/A') === 0) return 'na';
+  if (v === 'N' || v.indexOf('N -') === 0 || v === 'NO') return 'fail';
+  return 'pass';
 }
-function pillCls(c){return c==='pass'?'pill-pass':c==='fail'?'pill-fail':c==='na'?'pill-na':'pill-empty';}
-function pillLbl(c){return c==='pass'?'Pass':c==='fail'?'Fail':c==='na'?'N/A':'—';}
-function cssId(s){return s.replace(/[^a-z0-9]/gi,'_');}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function showToast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
+function pillCls(c) { return c === 'pass' ? 'pp' : c === 'fail' ? 'pf' : c === 'na' ? 'pn' : 'pe'; }
+function pillLbl(c) { return c === 'pass' ? 'Pass' : c === 'fail' ? 'Fail' : c === 'na' ? 'N/A' : '—'; }
+function cssId(s) { return s.replace(/[^a-z0-9]/gi, '_'); }
+function esc(s) { return String(s || '').replace(/&/g, 'and').replace(/</g, '').replace(/>/g, '').replace(/"/g, '').replace(/'/g, ''); }
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3000);
 }
 
+// START
 init();
 </script>
 </body>
