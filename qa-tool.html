@@ -321,7 +321,7 @@ function ghSave() {
   if (ghSha) body.sha = ghSha;
   return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
     method: 'PUT',
-    headers: {'Authorization': 'token ' + GH_TOKEN, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json'},
+    headers: {'Authorization': 'token ' + GH_TOKEN, 'Accept': 'application/vnd.github.v3+json', 'X-GitHub-Api-Version': '2026-03-10', 'Content-Type': 'application/json'},
     body: JSON.stringify(body)
   }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.content) { ghSha = d.content.sha; setSyncStatus('ok', 'saved'); toast('Saved to GitHub.'); }
