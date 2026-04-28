@@ -152,7 +152,7 @@ button:hover{background:var(--bg2)}button:disabled{opacity:.4;cursor:not-allowed
 // CONFIG
 var GH_TOKEN = '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';
 var GH_REPO = 'jbirum1-cmd/SQL-files';
-var GH_FILE = 'qa-data.json';
+var GH_FILE = 'QA-DATA/qa-data.json';
 
 // PROGRAM DATA
 var PROGRAMS = {
@@ -301,7 +301,7 @@ function setSyncStatus(state, lbl) {
 function ghGet() {
   setSyncStatus('spin', 'syncing…');
   return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
-    headers: {'Authorization': 'token ' + GH_TOKEN, 'Accept': 'application/vnd.github.v3+json'}
+    headers: {'Authorization': 'token ' + GH_TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'}
   }).then(function(r) {
     if (r.status === 404) { ghSha = null; allIters = {}; setSyncStatus('ok', 'connected'); return; }
     return r.json().then(function(d) {
