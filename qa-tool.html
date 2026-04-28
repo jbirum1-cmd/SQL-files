@@ -315,6 +315,7 @@ function ghGet() {
 }
 
 function ghSave() {
+  console.log('GH_TOKEN at save time: ', GH_TOKEN);
   setSyncStatus('spin', 'saving…');
   var payload = {iterations: allIters, lastUpdated: new Date().toISOString()};
   var content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
@@ -332,7 +333,34 @@ function ghSave() {
     console.log(d);
     if (d.content) { ghSha = d.content.sha; setSyncStatus('ok', 'saved'); toast('Saved to GitHub.'); }
     else { throw new Error(d.message || 'Save failed'); }
-  }).catch(function(e) { setSyncStatus('err', 'save failed'); toast('Save failed: ' + e.message); });
+  }).catch(function(e) { 
+      setSyncStatus('err', 'save failed'); 
+      toast('Save failed: ' + e.message);
+      ghSave2();
+    });
+}
+
+  function ghSave2() {
+  GH_TOKEN = 'Bearer ' + GH_TOKEN;
+  console.log('GH_TOKEN at save time: ', GH_TOKEN);
+  setSyncStatus('spin', 'saving…');
+  var payload = {iterations: allIters, lastUpdated: new Date().toISOString()};
+  var content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+  var body = {message: 'QA update: ' + (curIterKey || 'session') + ' ' + new Date().toLocaleString(), content: content};
+  if (ghSha) body.sha = ghSha;
+  console.log(body);
+  return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
+    method: 'PUT',
+    headers: {'Authorization': GH_TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'},
+    body: JSON.stringify(body)
+  }).then(function(r) { 
+    console.log('ghSave2 status: ', r.status);
+    return r.json(); })
+    .then(function(d) {
+    console.log(d);
+    if (d.content) { ghSha = d.content.sha; setSyncStatus('ok', 'saved'); toast('Saved to GitHub.'); }
+    else { throw new Error(d.message || 'Save 2 failed'); }
+  }).catch(function(e) { setSyncStatus('err', 'save failed'); toast('Save 2 failed: ' + e.message); });
 }
 
 // INIT
