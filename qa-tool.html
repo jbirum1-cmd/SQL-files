@@ -301,7 +301,7 @@ function setSyncStatus(state, lbl) {
 function ghGet() {
   setSyncStatus('spin', 'syncing…');
   return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
-    headers: {'Authorization': 'Bearer ' + GH_TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'}
+    headers: {'Authorization': GH_TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'}
   }).then(function(r) {
     if (r.status === 404) { ghSha = null; allIters = {}; setSyncStatus('ok', 'connected'); return; }
     return r.json().then(function(d) {
