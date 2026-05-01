@@ -1,5 +1,90 @@
-[ 
-  {
-    "test": "response"
-  }
-]
+{
+  "iterations": {
+    "POR Feed_1777407558330": {
+      "program": "POR Feed",
+      "iterName": "POR Feed — New Iteration",
+      "updateDesc": "dfgs",
+      "specs": [
+        {
+          "n": "Only rental items",
+          "d": "Program only sends rental items",
+          "isNew": false
+        },
+        {
+          "n": "Send 4 hour rental pricing",
+          "d": "4 hour rental pricing correctly sent",
+          "isNew": false
+        },
+        {
+          "n": "Send 1 day rental pricing",
+          "d": "1 day rental pricing correctly sent",
+          "isNew": false
+        },
+        {
+          "n": "Send 1 week rental pricing",
+          "d": "1 week rental pricing correctly sent",
+          "isNew": false
+        },
+        {
+          "n": "Delta feed",
+          "d": "All price updates correctly identified and sent",
+          "isNew": false
+        }
+      ],
+      "rounds": [
+        "Round 1"
+      ],
+      "results": {
+        "Only rental items": [
+          ""
+        ],
+        "Send 4 hour rental pricing": [
+          ""
+        ],
+        "Send 1 day rental pricing": [
+          ""
+        ],
+        "Send 1 week rental pricing": [
+          ""
+        ],
+        "Delta feed": [
+          ""
+        ]
+      },
+      "generated": {
+        "Only rental items": {
+          "name": "Only rental items",
+          "scenario": "Verify that the POR Feed exclusively sends SKUs flagged as rental items in Eagle ERP and excludes all non-rental products. The feed should never include retail, special-order, or obsolete non-rental SKUs. Edge cases include SKUs that are dual-classified (e.g., a product that is both rentable and sold), and obsolete rental SKUs that should no longer be active in the feed. Historical failures show that SKU set filtering has caused mismatches and that obsolete items have been included in active feeds when archive/web-no logic was not applied.",
+          "sql": "DROP TABLE IF EXISTS #tmp_rental_skus;\nSELECT\n    v.sku,\n    v.description,\n    v.rental_flag,\n    v.web_yn,\n    v.obsolete_flag\nINTO #tmp_rental_skus\nFROM sqleagle.hh.view_in_clone v\nWHERE v.rental_flag = Y;\n\n-- Regression: confirm no non-rental SKUs are included\nSELECT Non-rental SKUs in feed AS check_name, COUNT(*) AS discrepancy_count\nFROM #tmp_rental_skus\nWHERE rental_flag  Y\n\nUNION ALL\n\n-- Regression: confirm obsolete rental SKUs are excluded\nSELECT Obsolete rental SKUs still active in feed, COUNT(*)\nFROM #tmp_rental_skus\nWHERE obsolete_flag = Y\n  AND web_yn = Y;\n",
+          "regression": "Watch for obsolete rental SKUs remaining active in the feed, mirroring the pattern seen in Akeneo Appliance Feed where 344+ obsolete SKUs stayed active or draft due to missing archive/web-no logic."
+        },
+        "Send 4 hour rental pricing": {
+          "name": "Send 4 hour rental pricing",
+          "scenario": "Verify that the POR Feed correctly reads and transmits the 4-hour rental rate for each eligible rental SKU from Eagle ERP. The expected result is that every rental SKU in the feed has a non-null, positive 4-hour price that matches the authoritative Eagle source. Edge cases include SKUs with a 4-hour rate of zero (which may be valid or may indicate a data entry error), SKUs missing a 4-hour rate entirely, and SKUs where promo pricing has inadvertently replaced the standard rate. Historical failures in Product Pricing show that promo pricing was sent instead of standard pricing in the Amazon channel.",
+          "sql": "DROP TABLE IF EXISTS #tmp_4hr_pricing;\nSELECT\n    v.sku,\n    v.description,\n    r.rate_4hr,\n    r.rate_type\nINTO #tmp_4hr_pricing\nFROM sqleagle.hh.view_in_clone v\nJOIN sqleagle.hh.rental_rates r\n    ON v.sku = r.sku\n    AND r.rate_type = 4HR\nWHERE v.rental_flag = Y;\n\n-- Regression: SKUs with null or zero 4hr rate\nSELECT Null or zero 4hr rate, COUNT(*)\nFROM #tmp_4hr_pricing\nWHERE rate_4hr IS NULL OR rate_4hr = 0\n\nUNION ALL\n\n-- Regression: rental SKUs entirely missing a 4hr rate record\nSELECT Rental SKUs missing 4hr rate record, COUNT(*)\nFROM sqleagle.hh.view_in_clone v\nWHERE v.rental_flag = Y\n  AND NOT EXISTS (\n      SELECT 1 FROM sqleagle.hh.rental_rates r\n      WHERE r.sku = v.sku AND r.rate_type = 4HR\n  );\n",
+          "regression": "Watch for promo or alternate pricing values overriding the standard 4-hour rate, consistent with the Product Pricing failure in Akeneo Product Feed where 231 discrepancies were caused by promo prices being sent in the wrong channel."
+        },
+        "Send 1 day rental pricing": {
+          "name": "Send 1 day rental pricing",
+          "scenario": "Verify that the POR Feed correctly reads and transmits the 1-day rental rate for each eligible rental SKU from Eagle ERP. Every rental SKU in the feed should have a non-null, positive 1-day price that matches the Eagle source exactly. Edge cases include SKUs where the 1-day rate is lower than the 4-hour rate (a potential data integrity issue), SKUs missing a 1-day rate, and scenarios where pricing was recently updated in Eagle but the feed has not yet reflected the change. Data integrity failures are the most historically recurring failure pattern across all programs.",
+          "sql": "DROP TABLE IF EXISTS #tmp_1day_pricing;\nSELECT\n    v.sku,\n    v.description,\n    r.rate_1day,\n    r.rate_type\nINTO #tmp_1day_pricing\nFROM sqleagle.hh.view_in_clone v\nJOIN sqleagle.hh.rental_rates r\n    ON v.sku = r.sku\n    AND r.rate_type = 1DAY\nWHERE v.rental_flag = Y;\n\n-- Regression: null or zero 1-day rates\nSELECT Null or zero 1-day rate, COUNT(*)\nFROM #tmp_1day_pricing\nWHERE rate_1day IS NULL OR rate_1day = 0\n\nUNION ALL\n\n-- Regression: 1-day rate illogically less than 4-hour rate (data integrity)\nSELECT 1-day rate less than 4hr rate, COUNT(*)\nFROM sqleagle.hh.rental_rates r1\nJOIN sqleagle.hh.rental_rates r4\n    ON r1.sku = r4.sku\n    AND r1.rate_type = 1DAY\n    AND r4.rate_type = 4HR\nWHERE r1.rate_1day  r4.rate_4hr;\n",
+          "regression": "Watch for data integrity issues where 1-day rates are null, zero, or inverted relative to 4-hour rates — data integrity failures are the single most recurring pattern in QA history with 9 failures across programs."
+        },
+        "Send 1 week rental pricing": {
+          "name": "Send 1 week rental pricing",
+          "scenario": "Verify that the POR Feed correctly reads and transmits the 1-week rental rate for each eligible rental SKU from Eagle ERP. The expected result is a non-null, positive 1-week price per SKU that matches the Eagle source and is logically greater than both the 4-hour and 1-day rates. Edge cases include SKUs with a missing 1-week rate, SKUs where all three rental tiers have identical pricing (possible but worth flagging for review), and SKUs that were recently added to the rental catalog without all three tiers defined. Partial rate data has caused feed failures historically when programs did not handle nulls gracefully.",
+          "sql": "DROP TABLE IF EXISTS #tmp_1wk_pricing;\nSELECT\n    v.sku,\n    v.description,\n    r.rate_1wk,\n    r.rate_type\nINTO #tmp_1wk_pricing\nFROM sqleagle.hh.view_in_clone v\nJOIN sqleagle.hh.rental_rates r\n    ON v.sku = r.sku\n    AND r.rate_type = 1WK\nWHERE v.rental_flag = Y;\n\n-- Regression: null or zero 1-week rates\nSELECT Null or zero 1-week rate, COUNT(*)\nFROM #tmp_1wk_pricing\nWHERE rate_1wk IS NULL OR rate_1wk = 0\n\nUNION ALL\n\n-- Regression: rental SKUs missing any of the three rate tiers entirely\nSELECT Rental SKUs missing at least one rate tier, COUNT(DISTINCT v.sku)\nFROM sqleagle.hh.view_in_clone v\nWHERE v.rental_flag = Y\n  AND (\n      NOT EXISTS (SELECT 1 FROM sqleagle.hh.rental_rates r WHERE r.sku = v.sku AND r.rate_type = 4HR)\n   OR NOT EXISTS (SELECT 1 FROM sqleagle.hh.rental_rates r WHERE r.sku = v.sku AND r.rate_type = 1DAY)\n   OR NOT EXISTS (SELECT 1 FROM sqleagle.hh.rental_rates r WHERE r.sku = v.sku AND r.rate_type = 1WK)\n  );\n",
+          "regression": "Watch for rental SKUs that have 4-hour and 1-day rates defined but are missing the 1-week rate, which would cause partial or null data in the feed output and reflects the null-value transmission failures seen historically in UPC and pricing specs."
+        },
+        "Delta feed": {
+          "name": "Delta feed",
+          "scenario": "Verify that the delta feed correctly identifies and sends only rental SKUs whose pricing has changed since the last successful feed run, without re-sending unchanged records or missing records that did change. The expected result is a set of changed SKUs whose current Eagle pricing differs from what was last transmitted, with all three rental tiers (4hr, 1day, 1wk) evaluated independently for changes. Edge cases include SKUs whose price changed and then reverted before the next run (net-zero delta that should not be sent), SKUs newly added as rental items, and obsolete SKUs whose pricing changed but should no longer be sent. Historical failures in pricing and scheduled run times show that stale comparisons and disabled schedules have caused delta logic to break silently.",
+          "sql": "DROP TABLE IF EXISTS #tmp_delta;\nSELECT\n    curr.sku,\n    curr.rate_4hr        AS current_4hr,\n    prev.rate_4hr        AS last_sent_4hr,\n    curr.rate_1day       AS current_1day,\n    prev.rate_1day       AS last_sent_1day,\n    curr.rate_1wk        AS current_1wk,\n    prev.rate_1wk        AS last_sent_1wk\nINTO #tmp_delta\nFROM sqleagle.hh.rental_rates curr\nJOIN titan.integration.dbo.por_feed_last_sent prev\n    ON curr.sku = prev.sku\nJOIN sqleagle.hh.view_in_clone v\n    ON curr.sku = v.sku\n    AND v.rental_flag = Y\nWHERE\n    curr.rate_4hr   prev.rate_4hr\n OR curr.rate_1day  prev.rate_1day\n OR curr.rate_1wk   prev.rate_1wk;\n\n-- Regression: SKUs with a price change not captured in delta (should be zero)\nSELECT Price-changed rental SKUs not in delta output, COUNT(*)\nFROM sqleagle.hh.rental_rates curr\nJOIN titan.integration.dbo.por_feed_last_sent prev\n    ON curr.sku = prev.sku\nJOIN sqleagle.hh.view_in_clone v\n    ON curr.sku = v.sku AND v.rental_flag = Y\nWHERE (\n       curr.rate_4hr   prev.rate_4hr\n    OR curr.rate_1day  prev.rate_1day\n    OR curr.rate_1wk   prev.rate_1wk\n)\nAND curr.sku NOT IN (SELECT sku FROM #tmp_delta)\n\nUNION ALL\n\n-- Regression: obsolete SKUs incorrectly included in delta\nSELECT Obsolete SKUs in delta output, COUNT(*)\nFROM #tmp_delta d\nJOIN sqleagle.hh.view_in_clone v ON d.sku = v.sku\nWHERE v.obsolete_flag = Y;\n",
+          "regression": "Watch for the delta comparison silently passing when the last-sent table is stale or the schedule was disabled, consistent with the Akeneo Feed pattern where schedules were left disabled and pricing updates for obsoletes were never sent."
+        }
+      },
+      "savedAt": "2026-04-28T20:19:18.331Z"
+    }
+  },
+  "lastUpdated": "2026-04-28T20:19:18.332Z"
+}
