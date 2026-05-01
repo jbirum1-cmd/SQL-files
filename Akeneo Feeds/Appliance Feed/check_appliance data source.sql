@@ -27,3 +27,4 @@ from #homesource h
 join pim.AllProductsTable a
 on a.identifier = h.sku
 where a.core_product_data_source <> 'homesource'
+
