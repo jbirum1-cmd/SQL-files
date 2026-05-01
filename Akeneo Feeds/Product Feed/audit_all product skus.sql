@@ -1,10 +1,35 @@
+--get max update date record
+drop table if exists #maxupdate
+select
+sku,
+max(isnull(updatedate,insertdate)) as max_update_date
+into #maxupdate
+from titan.integration.dbo.centerspecappliances
+group by sku
+
+--create appliance exclusion list
+drop table if exists #exclusions
+select
+c.sku,
+c.obsoletedate
+into #exclusions
+from titan.integration.dbo.centerspecappliances c
+join #maxupdate m
+on m.sku = c.sku and m.max_update_date = coalesce(c.updatedate,c.insertdate)
+where c.obsoletedate is not null 
+
 drop table if exists #eagleprods
 select
-replace(replace(trim(in_item_number), '-FBA', ''),'(A)','') as sku,
+replace(replace(trim(v.in_item_number), '-FBA', ''),'(A)','') as sku,
 'Eagle' as source
 into #eagleprods
-from sqleagle.hh.view_in_clone
+from sqleagle.hh.view_in_clone v
 where in_privatefromecommercefg in ('C','O','N') and in_store IN ('1','2','4','7','8','D','J')
+and NOT EXISTS (
+    SELECT 1
+    FROM #exclusions e
+    WHERE e.sku = replace(replace(trim(v.in_item_number), '-FBA', ''),'(A)','')
+);
 
 drop table if exists #kits
 select
