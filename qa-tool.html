@@ -75,14 +75,30 @@ button:hover{background:var(--bg2)}button:disabled{opacity:.4;cursor:not-allowed
 .ii-name{font-size:13px;font-weight:500}.ii-meta{font-size:11px;color:var(--text3);margin-top:2px}
 .mo{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
 .md{background:var(--bg);border-radius:var(--rl);padding:24px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-#toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:var(--bg);font-size:13px;padding:10px 18px;border-radius:var(--r);opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.ti-section{margin-top:14px;padding:12px;background:var(--bg2);border-radius:var(--r);border:1px solid var(--border)}
+.ti-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.ti-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ti-field{display:flex;flex-direction:column;gap:3px}
+.ti-field label{font-size:11px;color:var(--text2);font-weight:500}
+.ti-field input,.ti-field textarea{font-family:var(--font);font-size:12px;padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text)}
+.ti-field textarea{resize:vertical;min-height:52px;line-height:1.4}
+.ti-field input:focus,.ti-field textarea:focus{outline:none;border-color:var(--blue)}
+#toast{position:fixed#toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:var(--bg);font-size:13px;padding:10px 18px;border-radius:var(--r);opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
 #toast.show{opacity:1}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 <header>
   <div class="logo">HRM QA Tool <span>/ Iteration Builder</span></div>
-  <div class="sync"><span class="dot" id="dot"></span><span id="syncLbl">connecting…</span></div>
+  <div style="display:flex;align-items:center;gap:8px">
+  <span class="dot" id="dot"></span><span id="syncLbl" style="font-size:11px;color:var(--text3)">ready</span>
+  <label style="font-size:12px;font-weight:500;cursor:pointer;padding:5px 12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text)" title="Load a previously saved qa-data.json file">
+    Load file
+    <input type="file" accept=".json" style="display:none" onchange="loadFromFile(event)" />
+  </label>
+</div>
 </header>
 <div class="main">
 
@@ -90,7 +106,7 @@ button:hover{background:var(--bg2)}button:disabled{opacity:.4;cursor:not-allowed
   <div class="steps"><span class="step on">1 · program</span><span class="sep">›</span><span class="step">2 · specs</span><span class="sep">›</span><span class="step">3 · update</span><span class="sep">›</span><span class="step">4 · review</span><span class="sep">›</span><span class="step">5 · QA</span></div>
   <h2>QA Iterations</h2>
   <p class="sub">Continue an existing iteration or start a new one. All data is saved to your GitHub repository.</p>
-  <div id="iterLoading" style="font-size:13px;color:var(--text2);margin-bottom:16px">Loading saved iterations…</div>
+  <div id="iterLoading" style="font-size:13px;color:var(--text2);margin-bottom:16px">Load a saved qa-data.json file using the button above, or start a new iteration below.</div>
   <div id="iterList" style="display:none;margin-bottom:20px"></div>
   <h3>Start new iteration</h3>
   <div class="field"><label class="lbl">Program</label><select id="progSel" onchange="onProgChange()"><option value="">— select a program —</option></select></div>
@@ -141,7 +157,8 @@ button:hover{background:var(--bg2)}button:disabled{opacity:.4;cursor:not-allowed
   <div id="qaList"></div>
   <div class="brow" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
     <button onclick="copyRound()">Copy round results</button>
-    <button class="btn-p" onclick="saveNow()">Save to GitHub</button>
+    <button onclick="exportToPdf()">Export to PDF</button>
+    <button class="btn-p" onclick="saveNow()">Save to file</button>
   </div>
 </div>
 
@@ -150,9 +167,7 @@ button:hover{background:var(--bg2)}button:disabled{opacity:.4;cursor:not-allowed
 
 <script>
 // CONFIG
-var GH_TOKEN = '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';
-var GH_REPO = 'jbirum1-cmd/SQL-files';
-var GH_FILE = 'QA-data/qa-data.json';
+var SAVE_FILENAME = 'qa-data.json';
 
 // PROGRAM DATA
 var PROGRAMS = {
@@ -288,9 +303,10 @@ var QA_HISTORY = "[Akeneo Appliance Feed]\n  All appropriate skus are sent: N - 
 // STATE
 var selProg = null, iterName = '', selSpecs = [], updateDescVal = '', affVal = '';
 var generated = {}, qaRounds = [], activeRound = 0, qaResults = {}, qaGen = {};
-var progSpecs = [], curIterKey = null, ghSha = null, allIters = {};
+var progSpecs = [], curIterKey = null, allIters = {};
+var testItems = {}; // per-spec test data: {specName: {orderNum, skus, notes}}
 
-// GITHUB
+// STATUS
 function setSyncStatus(state, lbl) {
   var dot = document.getElementById('dot');
   var sl = document.getElementById('syncLbl');
@@ -299,68 +315,53 @@ function setSyncStatus(state, lbl) {
 }
 
 function ghGet() {
-  setSyncStatus('spin', 'syncing…');
-  return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
-    headers: {'Authorization': GH_TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'}
-  }).then(function(r) {
-    if (r.status === 404) { ghSha = null; allIters = {}; setSyncStatus('ok', 'connected'); return; }
-    return r.json().then(function(d) {
-      console.log('ghGet response:', d);
-      ghSha = d.sha;
-      var decoded = JSON.parse(atob(d.content.replace(/\n/g, '')));
-      allIters = decoded.iterations || {};
-      setSyncStatus('ok', 'connected');
-    });
-  }).catch(function(e) { setSyncStatus('err', 'offline'); });
+  // No-op: data loads from file via the load button
+  setSyncStatus('ok', 'ready');
+  return Promise.resolve();
 }
 
 function ghSave() {
-  console.log('GH_TOKEN at save time: ', GH_TOKEN);
-  setSyncStatus('spin', 'saving…');
-  var payload = {iterations: allIters, lastUpdated: new Date().toISOString()};
-  var content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
-  var body = {message: 'QA update: ' + (curIterKey || 'session') + ' ' + new Date().toLocaleString(), content: content};
-  if (ghSha) body.sha = ghSha;
-  console.log(body);
-  return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
-    method: 'PUT',
-    headers: {'Authorization': GH_TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'},
-    body: JSON.stringify(body)
-  }).then(function(r) { 
-    console.log('ghSave status: ', r.status);
-    return r.json(); })
-    .then(function(d) {
-    console.log(d);
-    if (d.content) { ghSha = d.content.sha; setSyncStatus('ok', 'saved'); toast('Saved to GitHub.'); }
-    else { throw new Error(d.message || 'Save failed'); }
-  }).catch(function(e) { 
-      setSyncStatus('err', 'save failed'); 
-      toast('Save failed: ' + e.message);
-      ghSave2();
-    });
+  try {
+    var payload = {iterations: allIters, lastUpdated: new Date().toISOString()};
+    var json = JSON.stringify(payload, null, 2);
+    var blob = new Blob([json], {type: 'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = SAVE_FILENAME;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setSyncStatus('ok', 'saved');
+    toast('qa-data.json downloaded. Upload to GitHub to back up.');
+  } catch(e) {
+    setSyncStatus('err', 'save failed');
+    toast('Save failed: ' + e.message);
+  }
+  return Promise.resolve();
 }
 
-  function ghSave2() {
-  GH_TOKEN = 'Bearer ' + GH_TOKEN;
-  console.log('GH_TOKEN at save time: ', GH_TOKEN);
-  setSyncStatus('spin', 'saving…');
-  var payload = {iterations: allIters, lastUpdated: new Date().toISOString()};
-  var content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
-  var body = {message: 'QA update: ' + (curIterKey || 'session') + ' ' + new Date().toLocaleString(), content: content};
-  if (ghSha) body.sha = ghSha;
-  console.log(body);
-  return fetch('https://api.github.com/repos/' + GH_REPO + '/contents/' + GH_FILE, {
-    method: 'PUT',
-    headers: {'Authorization': GH_TOKEN, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2026-03-10'},
-    body: JSON.stringify(body)
-  }).then(function(r) { 
-    console.log('ghSave2 status: ', r.status);
-    return r.json(); })
-    .then(function(d) {
-    console.log(d);
-    if (d.content) { ghSha = d.content.sha; setSyncStatus('ok', 'saved'); toast('Saved to GitHub.'); }
-    else { throw new Error(d.message || 'Save 2 failed'); }
-  }).catch(function(e) { setSyncStatus('err', 'save failed'); toast('Save 2 failed: ' + e.message); });
+// FILE LOAD
+function loadFromFile(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      allIters = data.iterations || {};
+      setSyncStatus('ok', 'loaded');
+      renderIterList();
+      toast('Loaded ' + Object.keys(allIters).length + ' iteration(s) from file.');
+    } catch(err) {
+      setSyncStatus('err', 'load failed');
+      toast('Failed to load file: ' + err.message);
+    }
+    // Reset input so same file can be loaded again if needed
+    event.target.value = '';
+  };
+  reader.readAsText(file);
 }
 
 // INIT
@@ -426,6 +427,7 @@ function loadIter(key) {
   qaResults = it.results || {};
   qaGen = it.generated || {};
   generated = Object.assign({}, qaGen);
+  testItems = it.testItems || {};
   updateDescVal = it.updateDesc || '';
   activeRound = qaRounds.length - 1;
   document.getElementById('qaTitle').textContent = iterName;
@@ -627,6 +629,7 @@ function startQA() {
     generated[sn][type] = ta.value;
   });
   qaGen = Object.assign({}, generated);
+  testItems = {};
   qaRounds = ['Round 1'];
   activeRound = 0;
   qaResults = {};
@@ -678,8 +681,50 @@ function renderSpecs() {
       (gen.scenario ? '<div class="ai-lbl">Test scenario</div><div class="ai-box">' + esc(gen.scenario) + '</div>' : '') +
       (gen.sql ? '<div class="ai-lbl" style="margin-top:12px">Validation SQL</div><div class="sql-box">' + esc(gen.sql) + '</div>' : '') +
       (gen.regression ? '<div class="ai-lbl" style="margin-top:12px;color:var(--fail-t)">Regression watch</div><div class="reg-box">' + esc(gen.regression) + '</div>' : '') +
+      buildTestItemsHtml(spec.n) +
       '</div>';
     list.appendChild(card);
+    // Attach live listeners for test item inputs after card is in DOM
+    attachTestItemListeners(card, spec.n);
+  });
+}
+
+function buildTestItemsHtml(specName) {
+  var ti = testItems[specName] || {};
+  return '<div class="ti-section">' +
+    '<div class="ti-title">Test Data Recorded</div>' +
+    '<div class="ti-grid">' +
+    '<div class="ti-field"><label>Order Number(s)</label>' +
+    '<input type="text" class="ti-order" placeholder="e.g. HWEBS1422, HWEBS1423" value="' + esc(ti.orderNum || '') + '" /></div>' +
+    '<div class="ti-field"><label>SKU(s)</label>' +
+    '<input type="text" class="ti-sku" placeholder="e.g. 1192631, AUC20392" value="' + esc(ti.skus || '') + '" /></div>' +
+    '<div class="ti-field"><label>Test Date / Tester</label>' +
+    '<input type="text" class="ti-tester" placeholder="e.g. 2026-05-01 / JB" value="' + esc(ti.tester || '') + '" /></div>' +
+    '<div class="ti-field"><label>Environment</label>' +
+    '<input type="text" class="ti-env" placeholder="e.g. sandbox / testing" value="' + esc(ti.env || '') + '" /></div>' +
+    '</div>' +
+    '<div class="ti-field" style="margin-top:8px"><label>Test Observations</label>' +
+    '<textarea class="ti-obs" placeholder="Record what you saw, actual values returned, discrepancy counts, etc.">' + esc(ti.obs || '') + '</textarea></div>' +
+    '</div>';
+}
+
+function attachTestItemListeners(card, specName) {
+  function save() {
+    if (!testItems[specName]) testItems[specName] = {};
+    var o = card.querySelector('.ti-order');
+    var s = card.querySelector('.ti-sku');
+    var t = card.querySelector('.ti-tester');
+    var e = card.querySelector('.ti-env');
+    var ob = card.querySelector('.ti-obs');
+    if (o)  testItems[specName].orderNum = o.value;
+    if (s)  testItems[specName].skus     = s.value;
+    if (t)  testItems[specName].tester   = t.value;
+    if (e)  testItems[specName].env      = e.value;
+    if (ob) testItems[specName].obs      = ob.value;
+  }
+  card.querySelectorAll('.ti-order,.ti-sku,.ti-tester,.ti-env,.ti-obs').forEach(function(el) {
+    el.addEventListener('change', save);
+    el.addEventListener('input', save);
   });
 }
 
@@ -757,7 +802,7 @@ function copyRound() {
 }
 
 function buildPayload() {
-  return {program: selProg, iterName: iterName, updateDesc: updateDescVal, specs: selSpecs, rounds: qaRounds, results: qaResults, generated: qaGen, savedAt: new Date().toISOString()};
+  return {program: selProg, iterName: iterName, updateDesc: updateDescVal, specs: selSpecs, rounds: qaRounds, results: qaResults, generated: qaGen, testItems: testItems, savedAt: new Date().toISOString()};
 }
 
 function saveNow() {
@@ -767,8 +812,374 @@ function saveNow() {
 
 function autoSave() {
   allIters[curIterKey] = buildPayload();
-  ghSave();
+  // Auto-save is manual in file mode — data is held in memory until Save to file is clicked
 }
+
+// EXPORT TO PDF
+function exportToPdf() {
+  if (typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+    toast('PDF library not loaded. Check your internet connection.');
+    return;
+  }
+  var jsPDFClass = (typeof window.jspdf !== 'undefined') ? window.jspdf.jsPDF : jsPDF;
+  var doc = new jsPDFClass({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  var NAVY  = [30,  58,  95];
+  var TEAL  = [46, 134, 171];
+  var PASS  = [234, 243, 222];
+  var FAIL  = [252, 235, 235];
+  var NA    = [241, 239, 232];
+  var LGRAY = [242, 242, 242];
+  var WHITE = [255, 255, 255];
+  var pageW = doc.internal.pageSize.getWidth();
+  var margin = 12;
+  var usableW = pageW - margin * 2;
+  var filename = (iterName || 'QA-Export').replace(/[^a-z0-9\-_ ]/gi, '_') + '.pdf';
+
+  function addPageHeader(doc, title, subtitle) {
+    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.rect(0, 0, pageW, 18, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(255, 255, 255);
+    doc.text(title, margin, 12);
+    if (subtitle) {
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(subtitle, pageW - margin, 12, {align: 'right'});
+    }
+    doc.setTextColor(0, 0, 0);
+    return 24;
+  }
+
+  function statusColor(val) {
+    var c = classify(val);
+    if (c === 'pass') return PASS;
+    if (c === 'fail') return FAIL;
+    if (c === 'na')   return NA;
+    return WHITE;
+  }
+  function statusLabel(val) {
+    var c = classify(val);
+    if (c === 'pass') return 'Pass';
+    if (c === 'fail') return 'Fail';
+    if (c === 'na')   return 'N/A';
+    return '—';
+  }
+
+  // ── PAGE 1: Cover / Summary ──────────────────────────────────
+  doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+  doc.rect(0, 0, pageW, doc.internal.pageSize.getHeight(), 'F');
+
+  doc.setFillColor(TEAL[0], TEAL[1], TEAL[2]);
+  doc.rect(0, 60, pageW, 1.5, 'F');
+  doc.rect(0, 110, pageW, 1.5, 'F');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(28);
+  doc.text('QA Iteration Report', pageW / 2, 55, {align: 'center'});
+
+  doc.setFontSize(16);
+  doc.setTextColor(180, 210, 230);
+  doc.text(iterName || 'Untitled Iteration', pageW / 2, 75, {align: 'center'});
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(200, 220, 235);
+  var coverLines = [
+    ['Program:', selProg || '—'],
+    ['Rounds:', qaRounds.join(', ') || '—'],
+    ['Total specs:', String(selSpecs.length)],
+    ['Update description:', updateDescVal || '—'],
+    ['Exported:', new Date().toLocaleString()],
+  ];
+  var cy = 95;
+  coverLines.forEach(function(line) {
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(150, 195, 220);
+    doc.text(line[0], margin + 10, cy);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(220, 235, 245);
+    var wrapped = doc.splitTextToSize(line[1], usableW - 60);
+    doc.text(wrapped, margin + 55, cy);
+    cy += Math.max(7, wrapped.length * 5.5);
+  });
+
+  // Pass/fail summary on cover
+  var pass = 0, fail = 0, na = 0, empty = 0;
+  selSpecs.forEach(function(s) {
+    var lastRound = qaRounds.length - 1;
+    var v = ((qaResults[s.n] || [])[lastRound]) || '';
+    var c = classify(v);
+    if (c === 'pass') pass++;
+    else if (c === 'fail') fail++;
+    else if (c === 'na') na++;
+    else empty++;
+  });
+  var statsY = cy + 8;
+  var statsW = (usableW - 20) / 4;
+  var statsX = margin + 10;
+  [
+    ['PASS', String(pass), [34, 197, 94]],
+    ['FAIL', String(fail), [239, 68, 68]],
+    ['N/A',  String(na),   [180, 178, 169]],
+    ['OPEN', String(empty),[100, 140, 180]]
+  ].forEach(function(stat, i) {
+    var sx = statsX + i * (statsW + 5);
+    doc.setFillColor(stat[2][0], stat[2][1], stat[2][2]);
+    doc.roundedRect(sx, statsY, statsW, 20, 3, 3, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(255, 255, 255);
+    doc.text(stat[1], sx + statsW / 2, statsY + 12, {align: 'center'});
+    doc.setFontSize(8);
+    doc.text(stat[0], sx + statsW / 2, statsY + 18, {align: 'center'});
+  });
+
+  // ── PAGE 2: Pass/Fail Summary Table ──────────────────────────
+  doc.addPage();
+  var startY = addPageHeader(doc, 'Pass / Fail Summary', iterName);
+
+  var roundCols = qaRounds.map(function(r) { return {header: r, dataKey: r}; });
+  var summaryHead = [['Spec', 'Description'].concat(qaRounds).concat(['Latest Status'])];
+  var summaryBody = selSpecs.map(function(spec, si) {
+    var row = [spec.n, spec.d];
+    var lastVal = '';
+    qaRounds.forEach(function(r, ri) {
+      var v = ((qaResults[spec.n] || [])[ri]) || '';
+      lastVal = v;
+      row.push(statusLabel(v) + (getNoteText(v) ? '\n' + getNoteText(v) : ''));
+    });
+    var overall = classify(lastVal);
+    row.push(overall === 'pass' ? 'Pass' : overall === 'fail' ? 'Fail' : overall === 'na' ? 'N/A' : '—');
+    return row;
+  });
+
+  var specColW = 45, descColW = 65, statusColW = 14;
+  var roundColW = Math.max(14, Math.floor((usableW - specColW - descColW - statusColW) / Math.max(1, qaRounds.length)));
+
+  doc.autoTable({
+    head: summaryHead,
+    body: summaryBody,
+    startY: startY,
+    margin: {left: margin, right: margin},
+    styles: {font: 'helvetica', fontSize: 8, cellPadding: 3, overflow: 'linebreak', valign: 'top'},
+    headStyles: {fillColor: TEAL, textColor: 255, fontStyle: 'bold', halign: 'center'},
+    columnStyles: {
+      0: {cellWidth: specColW, fontStyle: 'bold'},
+      1: {cellWidth: descColW},
+    },
+    didParseCell: function(data) {
+      if (data.section === 'body') {
+        var ri = data.row.index;
+        var ci = data.column.index;
+        var spec = selSpecs[ri];
+        if (!spec) return;
+        // Color round result cells
+        if (ci >= 2 && ci < 2 + qaRounds.length) {
+          var roundIdx = ci - 2;
+          var v = ((qaResults[spec.n] || [])[roundIdx]) || '';
+          var c = classify(v);
+          if (c === 'pass') data.cell.styles.fillColor = PASS;
+          else if (c === 'fail') data.cell.styles.fillColor = FAIL;
+          else if (c === 'na') data.cell.styles.fillColor = NA;
+          else data.cell.styles.fillColor = ri % 2 === 0 ? LGRAY : WHITE;
+          data.cell.styles.halign = 'center';
+        }
+        // Color overall status column
+        if (ci === 2 + qaRounds.length) {
+          var lastIdx = qaRounds.length - 1;
+          var lv = ((qaResults[spec.n] || [])[lastIdx]) || '';
+          var lc = classify(lv);
+          if (lc === 'pass') data.cell.styles.fillColor = PASS;
+          else if (lc === 'fail') data.cell.styles.fillColor = FAIL;
+          else if (lc === 'na') data.cell.styles.fillColor = NA;
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.halign = 'center';
+        }
+        // Alternating row bg for non-colored cells
+        if (ci < 2) {
+          data.cell.styles.fillColor = ri % 2 === 0 ? LGRAY : WHITE;
+        }
+      }
+    }
+  });
+
+  // ── PAGE 3+: Spec Detail Pages ────────────────────────────────
+  selSpecs.forEach(function(spec, si) {
+    doc.addPage();
+    var gen = qaGen[spec.n] || {};
+    var ti  = testItems[spec.n] || {};
+    var y   = addPageHeader(doc,
+      (si + 1) + ' of ' + selSpecs.length + ' — ' + spec.n,
+      selProg + ' · ' + iterName
+    );
+
+    // ── Spec description ─────────────────────────────────────
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(TEAL[0], TEAL[1], TEAL[2]);
+    doc.text('SPEC DESCRIPTION', margin, y);
+    y += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    var descLines = doc.splitTextToSize(spec.d || '—', usableW);
+    doc.text(descLines, margin, y);
+    y += descLines.length * 5 + 6;
+
+    // ── Round results row ────────────────────────────────────
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(TEAL[0], TEAL[1], TEAL[2]);
+    doc.text('ROUND RESULTS', margin, y);
+    y += 5;
+
+    var roundTableHead = [qaRounds];
+    var roundTableBody = [qaRounds.map(function(r, ri) {
+      var v = ((qaResults[spec.n] || [])[ri]) || '';
+      return statusLabel(v) + (getNoteText(v) ? ' — ' + getNoteText(v) : '');
+    })];
+    var roundW = usableW / Math.max(1, qaRounds.length);
+    doc.autoTable({
+      head: roundTableHead,
+      body: roundTableBody,
+      startY: y,
+      margin: {left: margin, right: margin},
+      styles: {font: 'helvetica', fontSize: 8, cellPadding: 3, halign: 'center', overflow: 'linebreak'},
+      headStyles: {fillColor: [60, 60, 80], textColor: 255, fontStyle: 'bold'},
+      didParseCell: function(data) {
+        if (data.section === 'body') {
+          var ri2 = data.column.index;
+          var v2 = ((qaResults[spec.n] || [])[ri2]) || '';
+          var c2 = classify(v2);
+          if (c2 === 'pass') data.cell.styles.fillColor = PASS;
+          else if (c2 === 'fail') data.cell.styles.fillColor = FAIL;
+          else if (c2 === 'na') data.cell.styles.fillColor = NA;
+        }
+      }
+    });
+    y = doc.lastAutoTable.finalY + 8;
+
+    // ── Two-column layout: scenario + test data ──────────────
+    var colW = (usableW - 6) / 2;
+    var leftX = margin;
+    var rightX = margin + colW + 6;
+    var sectionStartY = y;
+
+    // Left: Test Scenario
+    if (gen.scenario) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(TEAL[0], TEAL[1], TEAL[2]);
+      doc.text('TEST SCENARIO', leftX, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(8);
+      y += 5;
+      var scenLines = doc.splitTextToSize(gen.scenario, colW);
+      doc.setFillColor(LGRAY[0], LGRAY[1], LGRAY[2]);
+      doc.rect(leftX, y - 1, colW, scenLines.length * 4.5 + 4, 'F');
+      doc.text(scenLines, leftX + 2, y + 2);
+      y += scenLines.length * 4.5 + 8;
+    }
+
+    // Regression watch
+    if (gen.regression) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(163, 45, 45);
+      doc.text('REGRESSION WATCH', leftX, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      y += 5;
+      var regLines = doc.splitTextToSize(gen.regression, colW);
+      doc.setFillColor(252, 235, 235);
+      doc.rect(leftX, y - 1, colW, regLines.length * 4.5 + 4, 'F');
+      doc.text(regLines, leftX + 2, y + 2);
+      y += regLines.length * 4.5 + 8;
+    }
+
+    // Right column: Test Data Recorded
+    var rightY = sectionStartY;
+    var tdFields = [
+      ['Order Number(s)', ti.orderNum],
+      ['SKU(s)', ti.skus],
+      ['Test Date / Tester', ti.tester],
+      ['Environment', ti.env],
+    ];
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(TEAL[0], TEAL[1], TEAL[2]);
+    doc.text('TEST DATA RECORDED', rightX, rightY);
+    rightY += 5;
+    tdFields.forEach(function(f) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(80, 80, 80);
+      doc.text(f[0], rightX, rightY);
+      rightY += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      var fLines = doc.splitTextToSize(f[1] || '—', colW);
+      doc.setFillColor(LGRAY[0], LGRAY[1], LGRAY[2]);
+      doc.rect(rightX, rightY - 1, colW, fLines.length * 4.5 + 3, 'F');
+      doc.text(fLines, rightX + 2, rightY + 2);
+      rightY += fLines.length * 4.5 + 6;
+    });
+    // Observations
+    if (ti.obs) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(80, 80, 80);
+      doc.text('Observations', rightX, rightY);
+      rightY += 4;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      var obsLines = doc.splitTextToSize(ti.obs, colW);
+      doc.setFillColor(LGRAY[0], LGRAY[1], LGRAY[2]);
+      doc.rect(rightX, rightY - 1, colW, obsLines.length * 4.5 + 3, 'F');
+      doc.text(obsLines, rightX + 2, rightY + 2);
+      rightY += obsLines.length * 4.5 + 6;
+    }
+
+    // ── Validation SQL ───────────────────────────────────────
+    y = Math.max(y, rightY) + 4;
+    if (gen.sql) {
+      var pageH = doc.internal.pageSize.getHeight();
+      if (y > pageH - 60) { doc.addPage(); y = addPageHeader(doc, spec.n + ' — Validation SQL', iterName); }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(TEAL[0], TEAL[1], TEAL[2]);
+      doc.text('VALIDATION SQL', margin, y);
+      y += 5;
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(20, 20, 20);
+      var sqlLines = doc.splitTextToSize(gen.sql, usableW - 4);
+      doc.setFillColor(36, 36, 34);
+      doc.rect(margin, y - 1, usableW, sqlLines.length * 4 + 5, 'F');
+      doc.setTextColor(200, 230, 200);
+      doc.text(sqlLines, margin + 2, y + 3);
+    }
+  });
+
+  // ── Page numbers ─────────────────────────────────────────────
+  var totalPages = doc.getNumberOfPages();
+  for (var pg = 1; pg <= totalPages; pg++) {
+    doc.setPage(pg);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Page ' + pg + ' of ' + totalPages + '  ·  ' + (iterName || '') + '  ·  HRM Enterprises QA',
+      pageW / 2, doc.internal.pageSize.getHeight() - 5, {align: 'center'});
+  }
+
+  doc.save(filename);
+  toast('PDF downloaded: ' + filename);
+}
+
 
 // UTILS
 function classify(val) {
