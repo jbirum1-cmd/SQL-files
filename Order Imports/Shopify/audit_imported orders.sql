@@ -37,7 +37,8 @@ left join integration.ordimp.shopifyorders s
 on substring(o.orderid,21,13) = s.shopifyorderid
 left join integration.ordimp.shopifyorderitems i
 on s.id = i.orderid
-where o.orderid like '%shopify%' and cast(o.datecreated as date) >= '2026-03-18'
+where s.shopifyordername in ('HWEBS1461')
+--where o.orderid like '%shopify%' and cast(o.datecreated as date) >= '2026-03-18'
 order by shopifyordername desc 
 
 --NO data
@@ -57,9 +58,16 @@ join titan.testing.dbo.line_item i
 on o.order_number = i.order_number
 join titan.testing.[dbo].[order_status]s
 on s.status_code = i.status_code
-where o.udf_code = 'hhcv3' and o.order_number like '%hwebs%'
+where o.udf_code = 'hhcv3' and o.order_number in ('HWEBS1461')
 order by o.order_number desc
 
 select * from integration.inv.ShopifyPending
 
-select * from integration.ordimp.orderkickout
+select * from integration.ordimp.orderkickout where orderid in ('HWEBS1461')
+
+select * from integration.ordimp.ShopifyCustomProducts
+order by shopifyordername desc
+
+--update integration.ordimp.ShopifyCustomProducts
+--set CorrectedSku = 'AM135594' 
+--where shopifyordername = 'HWEBS1455'
